@@ -4,7 +4,6 @@ import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent._
-import play.api.libs.iteratee._
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumerator, Iteratee}
@@ -15,7 +14,6 @@ import actors._
 import akka.actor.Props
 import akka.pattern.ask
 import akka.util.Timeout
-import actors.UpdateTime
 import actors.StartSocket
 import actors.SocketClosed
 import scala.util.Random
@@ -29,7 +27,7 @@ import play.api.Routes
 object AppController extends Controller with Secured{
 
   def index = withAuth {
-    implicit request => userId =>
+    userId => implicit request =>
       Ok(views.html.app.index())
   }
 
@@ -53,7 +51,7 @@ object AppController extends Controller with Secured{
           // create a Itreatee which ignore the input and
           // and send a SocketClosed message to the actor when
           // connection is closed from the client
-          (Iteratee.ignore[JsValue] mapDone {
+          (Iteratee.ignore[JsValue] map {
             _ =>
               timerActor ! SocketClosed(userId)
           }, enumerator.asInstanceOf[Enumerator[JsValue]])
@@ -97,7 +95,8 @@ trait Secured {
    * random userId and reload index page
    */
   def unauthF(request: RequestHeader) = {
-    val newId: String = new Random().nextInt().toString()
+    // TODO: This is where to implement the list of valid users and devices
+    val newId: String = new Random().nextInt().toString
     Redirect(routes.AppController.index).withSession(Security.username -> newId)
   }
 
@@ -110,6 +109,13 @@ trait Secured {
     Security.Authenticated(username, unauthF) {
       username =>
         Action(request => f(username.toInt)(request))
+    }
+  }
+
+  def withAuthFuture(f: => Int => Request[_ >: AnyContent] => Future[SimpleResult]): EssentialAction = {
+    Security.Authenticated(username, unauthF) {
+      username =>
+        Action.async(request => f(username.toInt)(request))
     }
   }
 

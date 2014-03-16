@@ -2,6 +2,8 @@ package misc
 
 import java.sql.{Timestamp, Time, Date}
 import java.util.Calendar
+import scala.concurrent.duration.Duration
+import java.util.concurrent.TimeUnit
 
 /**
  * Created with IntelliJ IDEA.
@@ -34,4 +36,7 @@ object Util {
 
   def formatTime(time: Long) = s"${hours(time)}:${minutes(time)}:${seconds(time)}"
 
+  val defaultAwaitTimeout = Duration(5, TimeUnit.SECONDS)
+
+  def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
 }

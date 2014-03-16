@@ -1,0 +1,83 @@
+@(itemsData: Map[Item, List[WinningBid]],
+        categories: List[String],
+        donors: List[String],
+        itemForm: Form[(String, String, String, String, BigDecimal)],
+        winningBidForm: Form[(Long, BigDecimal)])
+@import helper._
+@import misc.Util
+@layout("Items") {
+    <datalist id="categories">
+    @for(category <- categories) {
+        <option value="@category"/>
+    }
+    </datalist>
+    <datalist id="donors">
+    @for(donor <- donors) {
+        <option value="@donor"/>
+    }
+    </datalist>
+    <table class="table-bordered">
+        <thead>
+            <tr>
+                <th>Bid #</th>
+                <th>Category</th>
+                <th>Donor</th>
+                <th>Description</th>
+                <th>Min Bid</th>
+                <th>Winning Bidder(s)</th>
+                <th>Winning Bid Total</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @for(item <- itemsData.keySet.toList.sortBy(_.itemNumber)) {
+                @defining(itemsData.get(item).get) { winningBids =>
+            <tr>
+                <td class="text-right">@item.itemNumber</td>
+                <td>@item.category</td>
+                <td>@item.donor</td>
+                <td>@item.description</td>
+                <td class="text-right">@Util.formatMoney(item.minbid)</td>
+                <td>@winningBids</td>
+                <td class="text-right">@Util.formatMoney(winningBids map { _.amount} sum)</td>
+                <td>@if(winningBids.isEmpty) {
+                    @form(routes.ItemController.deleteItem(item.id.get)) {
+                    <button type="submit"><i class="icon-eraser">Delete</i></button>
+                    }
+                }</td>
+                }
+            </tr>
+            @form(routes.ItemController.addWinningBid(item.id.get)) {
+            <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>@inputText(winningBidForm("bidderId"))</td>
+                <td>@inputText(winningBidForm("amount"))</td>
+                <td><button type="submit"><i class="icon-plus-sign">Add</i></button></td>
+            </tr>
+            }
+            }
+        </tbody>
+    </table>
+    <div class="container">
+    @form(routes.ItemController.newItem) {
+        <table>
+            <tr>
+                <td>@inputText(itemForm("itemNumber"), 'size -> 6)</td>
+                <td>@inputText(itemForm("category"), 'list -> "categories", 'size -> 15)</td>
+            </tr>
+            <tr>
+                <td>@inputText(itemForm("donor"), 'list -> "donors", 'size -> 15)</td>
+                <td>@inputText(itemForm("description"), 'size -> 45)</td>
+                <td>@inputText(itemForm("minbid"), 'size -> 6)</td>
+            </tr>
+            <tr>
+                <td colspan="5"><button type="submit"><i class="icon-plus-sign">Add</i></button></td>
+            </tr>
+        </table>
+    }
+    </div>
+}
