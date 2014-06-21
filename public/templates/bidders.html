@@ -1,0 +1,77 @@
+<h1>Bidders</h1>
+<div class="container-fluid">
+    <div class="row" ng-switch="!!activebidder">
+        <div class="col-md-2">
+            Search: <input ng-model="searchterm">
+            <hr>
+            New Bidder: <input ng-model="bidder_name">
+            <button class="btn btn-success" ng-click="addBidder()">Add</button>
+            <hr>
+            <button class="btn btn-primary" ng-click="clearActiveBidder()">Close Bidder</button>
+        </div>
+        <div class="col-md-2 scrollable">
+            <table class="table table-condensed table-hover">
+                <thead>
+                    <tr>
+                        <th><strong>Bidder ID</strong></th>
+                        <th><strong>Name</strong></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="bidderdata in biddersdata | filter: searchterm | orderBy: bidder.id"
+                        ng-click="setActiveBidder(bidderdata.bidder.id)">
+                        <td class="text-right">{{bidderdata.bidder.id}}</td>
+                        <td>{{bidderdata.bidder.name}}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-8" ng-show="activebidder">
+            <h2>{{ activebidder.bidder.name }}</h2>
+            <h3>Winning Bids</h3>
+            <div class="row">
+                <div class="col-md-1"><strong>Item Number</strong></div>
+                <div class="col-md-2"><strong>Category</strong></div>
+                <div class="col-md-2"><strong>Donor</strong></div>
+                <div class="col-md-5"><strong>Description</strong></div>
+                <div class="col-md-1"><strong>Min Bid</strong></div>
+                <div class="col-md-1"><strong>Bid Amount</strong></div>
+            </div>
+            <div class="row" ng-repeat="winningbid in activebidder.winningBids">
+                <div class="col-md-1">{{winningbid.item.itemNumber}}</div>
+                <div class="col-md-2">{{winningbid.item.category}}</div>
+                <div class="col-md-2">{{winningbid.item.donor}}</div>
+                <div class="col-md-5">{{winningbid.item.description}}</div>
+                <div class="col-md-1">{{winningbid.item.minbid | currency}}</div>
+                <div class="col-md-1">{{winningbid.amount | currency}}</div>
+            </div>
+            <div class="row">
+                <div class="col-md-1 col-md-offset-10"><strong>Total:</strong></div>
+                <div class="col-md-1"><strong>{{ winningBidsTotal(activebidder) | currency }}</strong></div>
+            </div>
+            <h3>Payments</h3>
+            <div class="row">
+                <div class="col-md-4"><strong>Description</strong></div>
+                <div class="col-md-4"><strong>Amount</strong></div>
+            </div>
+            <div class="row" ng-repeat="payment in activebidder.payments">
+                <div class="col-md-4">{{ payment.description }}</div>
+                <div class="col-md-8">{{ payment.amount | currency }}</div>
+            </div>
+            <div class="row">
+                <div class="col-md-1 col-md-offset-3"><strong>Total:</strong></div>
+                <div class="col-md-8"><strong>{{ paymentTotal(activebidder) | currency }}</strong></div>
+            </div>
+            <div class="row">
+                <form name="newpayment" novalidate>
+                    <div class="col-md-4"><input type="text" name="pDesc" ng-model="payment.description" placeholder="Description" required></div>
+                    <div class="col-md-4"><input type="number" name="pAmt" ng-model="payment.amount" placeholder="Amount" smart-float required></div>
+                    <div class="col-md-4">
+                        <button class="btn btn-success" ng-click="addPayment()">Add Payment</button><br>
+                        <a href="https://p2p.paperlesstrans.com/default.aspx?i=ccc" target="pmtpage">Credit Card Page</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

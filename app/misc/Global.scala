@@ -20,6 +20,7 @@ object Global extends GlobalSettings {
   }
 
   override def onHandlerNotFound(request: RequestHeader) = {
+    println("HEY!!! Can't find this: " + request.path)
     Future(Redirect(controllers.routes.AppController.index))
   }
 

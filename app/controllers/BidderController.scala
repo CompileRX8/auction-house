@@ -1,66 +1,46 @@
 package controllers
 
-import play.api.mvc.Controller
+import play.api.mvc.{Action, Controller}
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.{Await, Future}
-import models.{Payment, Bidder}
+import models.{BidderData, WinningBid, Payment, Bidder}
 import play.api.data.Form
 import play.api.data.Forms._
 import scala.Some
 import misc.Util
+import play.api.libs.json.Json
 
-object BidderController extends Controller with Secured {
+object BidderController extends Controller {
 
-  private def allBiddersData: Future[Map[Bidder, (BigDecimal, BigDecimal, List[Payment])]] = {
-    Bidder.all() map { bidders =>
-      val tuples = bidders map { bidder =>
-        Bidder.owes(bidder) flatMap { owesOpt =>
-          Bidder.total(bidder) flatMap { totalOpt =>
+  implicit val bidderFormat = Json.format[Bidder]
+  implicit val paymentFormat = Json.format[Payment]
+  implicit val bidderDataFormat = Json.format[BidderData]
+
+  def bidders = Action { implicit request =>
+    try {
+      val futureBs = Bidder.all() map { bidders =>
+        val dataFuture = bidders map { bidder =>
+          WinningBid.allByBidder(bidder) flatMap { winningBidsOpt =>
             Bidder.payments(bidder) map { paymentsOpt =>
-              bidder -> (owesOpt.get, totalOpt.get, paymentsOpt.get)
+              BidderData(bidder, paymentsOpt.get, winningBidsOpt.get)
             }
           }
         }
+        dataFuture.map { Await.result(_, Util.defaultAwaitTimeout) }
       }
-      val data = tuples.map { Await.result(_, Util.defaultAwaitTimeout) }
-      data.toMap
+      val bs = Await.result(futureBs, Util.defaultAwaitTimeout)
+      Ok(Json.toJson(bs))
+    } catch {
+      case e: Exception =>
+        BadRequest(Json.toJson(e.getMessage))
     }
   }
 
-  def bidders = withAuthFuture { userId => implicit request =>
-    allBiddersData map { biddersData => Ok(views.html.app.bidder(biddersData, newBidderForm)) }
+  def newBidder = Action(parse.json) { implicit request =>
+    val name = (request.body \ "name").as[String]
+    Bidder.create(name)
+    Ok("")
   }
 
-  val newBidderForm = Form(
-    "name" -> nonEmptyText(1, 15)
-  )
-
-  def newBidder = withAuthFuture {
-    userId => implicit request =>
-      newBidderForm.bindFromRequest.fold(
-        errors => {
-          allBiddersData map { biddersData => BadRequest(views.html.app.bidder(biddersData, errors)) }
-        },
-        name => {
-          Bidder.create(name) flatMap {
-            case Some(bidder) => allBiddersData map { _ => Redirect(routes.BidderController.bidders) }
-            case None => allBiddersData map {
-              biddersData => Conflict(views.html.app.bidder(biddersData, newBidderForm.withError("name", "Bidder named \"" + name + "\" already exists")))
-            }
-          }
-        }
-      )
-  }
-
-  def deleteBidder(bidderId: Long) = withAuthFuture {
-    userId => implicit request =>
-      Bidder.delete(bidderId) flatMap {
-        case Some(bidder) => allBiddersData map { _ => Redirect(routes.BidderController.bidders) }
-        case None => allBiddersData map {
-          biddersData => BadRequest(views.html.app.bidder(biddersData,
-            newBidderForm.withGlobalError("Unable to delete bidder with id #" + bidderId)))
-        }
-      }
-  }
-
+  def deleteBidder(bidderId: Long) = TODO
 }

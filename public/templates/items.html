@@ -1,0 +1,52 @@
+<h1>Items</h1>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-2 searchbar" data-spy="affix" data-offset-top="60" data-offset-bottom="200">
+            Search: <input ng-model="searchterm">
+        </div>
+        <div class="col-md-6 scrollable">
+            <table class="table table-hover table-condensed">
+                <thead>
+                <tr>
+                    <th>Item Number</th>
+                    <th>Category</th>
+                    <th>Donor</th>
+                    <th>Description</th>
+                    <th>Min Bid</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="itemdata in itemsdata | filter: searchterm | orderBy: item.itemNumber"
+                    ng-click="setActiveItem(itemdata.item.id)" ng-mouseleave="clearActiveItem()">
+                    <td>{{itemdata.item.itemNumber}}</td>
+                    <td>{{itemdata.item.category}}</td>
+                    <td>{{itemdata.item.donor}}</td>
+                    <td>{{itemdata.item.description}}</td>
+                    <td>{{itemdata.item.minbid | currency}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-md-4 contentarea">
+            <div ng-show="activeitem">
+                <h2>Winning Bidders</h2>
+                <table class="table table-condensed">
+                    <thead>
+                    <tr>
+                        <th>Bidder ID</th>
+                        <th>Name</th>
+                        <th>Bid Amount</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="winningbid in activeitem.winningBids">
+                        <td>{{winningbid.bidder.id}}</td>
+                        <td>{{winningbid.bidder.name}}</td>
+                        <td>{{winningbid.amount | currency}}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
