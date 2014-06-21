@@ -1,108 +1,74 @@
 package controllers
 
-import play.api.mvc.Controller
+import play.api.mvc.{Action, Controller, SimpleResult}
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.concurrent.{Await, Future}
 import models.{Bidder, WinningBid, Item}
-import play.api.data.Form
-import play.api.data.Forms._
 import scala.Some
 import misc.Util
+import play.api.libs.json.Json
 
-object ItemController extends Controller with Secured {
+object ItemController extends Controller {
 
-  private def allItemData: Future[(Map[Item, List[WinningBid]], List[String], List[String])] = {
-    val itemData = Item.all() map { items =>
-      val tuples = items map { item =>
+  case class ItemData(item: Item, winningBids: List[WinningBid])
+  object ItemData {
+    implicit val itemFormat = Json.format[ItemData]
+  }
+
+  def items = Action { implicit request =>
+    val isFuture = Item.all() map { items =>
+      val dataFuture = items map { item =>
         Item.winningBids(item) map { bidsOpt =>
-          item -> bidsOpt.get
+          ItemData(item, bidsOpt.get)
         }
       }
-      val data = tuples.map { Await.result(_, Util.defaultAwaitTimeout) }
-      data.toMap
+      dataFuture map { Await.result(_, Util.defaultAwaitTimeout) }
     }
-    (itemData zip Item.allCategories() zip Item.allDonors()).collect { case ((a, b), c) => (a, b, c) }
+    val is = Await.result(isFuture, Util.defaultAwaitTimeout)
+    Ok(Json.toJson(is))
   }
 
-  def items = withAuthFuture { userId => implicit request =>
-    allItemData map { case (items, categories, donors) => Ok(views.html.app.item(items, categories, donors, newItemForm, newWinningBidForm)) }
-  }
+  def newItem = TODO
 
-  val newItemForm = Form(
-    tuple (
-      "itemNumber" -> nonEmptyText(1, 5),
-      "category" -> nonEmptyText(1, 15),
-      "donor" -> nonEmptyText(1, 15),
-      "description" -> nonEmptyText(1, 45),
-      "minbid" -> bigDecimal
-    )
-  )
+  def deleteItem(itemId: Long) = TODO
 
-  def newItem = withAuthFuture {
-    userId => implicit request =>
-      newItemForm.bindFromRequest.fold(
-        errors => {
-          allItemData map { case (items, categories, donors) =>
-            BadRequest(views.html.app.item(items, categories, donors, errors, newWinningBidForm))
-          }
-        },
-        itemTuple => {
-          val (itemNum, cat, donor, desc, minbid) = itemTuple
-          Item.create(itemNum, cat, donor, desc, minbid) flatMap {
-            case Some(item) => allItemData map { _ => Redirect(routes.ItemController.items) }
-            case None => allItemData map { case (items, categories, donors) =>
-              Conflict(views.html.app.item(items, categories, donors, newItemForm.withError("itemNumber", "Item #" + itemNum + " already exists"), newWinningBidForm))
-            }
-          }
-
-        }
-      )
-  }
-
-  def deleteItem(itemId: Long) = withAuthFuture {
-    userId => implicit request =>
-      Item.delete(itemId) flatMap {
-        case Some(item) => allItemData map { _ => Redirect(routes.ItemController.items) }
-        case None => allItemData map {
-          case (items, categories, donors) => BadRequest(views.html.app.item(items, categories, donors,
-            newItemForm.withGlobalError("Unable to delete item with item id" + itemId), newWinningBidForm))
-        }
+  def addWinningBid(itemId: Long) = Action(parse.json) { implicit request =>
+    // TODO: Add Error Handling for bad bidder ids
+    val bidderId = (request.body \ "bidderId").as[Long]
+    val amount = (request.body \ "amount").as[BigDecimal]
+    Item.get(itemId) foreach { item =>
+      Bidder.get(bidderId) foreach { bidder =>
+        Item.addWinningBid(bidder.get, item.get, amount)
       }
-
+    }
+    Ok("")
   }
 
-  val newWinningBidForm = Form(
-    tuple (
-      "bidderId" -> longNumber,
-      "amount" -> bigDecimal
-    )
-  )
-
-  def addWinningBid(itemId: Long) = withAuthFuture {
-    userId => implicit request =>
-      newWinningBidForm.bindFromRequest.fold(
-        errors => {
-          allItemData map { case (items, categories, donors) =>
-            BadRequest(views.html.app.item(items, categories, donors, newItemForm, errors))
-          }
-        },
-        winningBidTuple => {
-          val (bidderId, amount) = winningBidTuple
-          Item.get(itemId) flatMap { itemOpt =>
-            Bidder.get(bidderId) map { bidderOpt =>
-              (itemOpt, bidderOpt)
-            }
-          } flatMap {
-            case (Some(item), Some(bidder)) =>
-              Item.addWinningBid(bidder, item, amount) flatMap {
-                case Some(winningBid) => allItemData map { _ => Redirect(routes.ItemController.items) }
-                case None => allItemData map {
-                  case (items, categories, donors) => BadRequest(views.html.app.item(items, categories, donors,
-                    newItemForm, newWinningBidForm.withGlobalError("Unable to register winning bid for bidder #" + bidderId)))
-                }
-              }
-          }
+  def editWinningBid(winningBidId: Long) = TODO /* Action(parse.json) { implicit request =>
+    try {
+      val bidderId = (request.body \ "bidderId").as[Long]
+      val itemId = (request.body \ "itemId").as[Long]
+      val amount = (request.body \ "amount").as[BigDecimal]
+      val resultFuture: Future[SimpleResult] = Item.get(itemId) flatMap { itemOpt =>
+        Bidder.get(bidderId) map { bidderOpt =>
+          (itemOpt, bidderOpt)
         }
-      )
+      } flatMap {
+        case (Some(item), Some(bidder)) =>
+          Item.editWinningBid(winningBidId, bidder, item, amount) map {
+            case Some(winningBid) => Ok(Json.toJson(winningBid))
+            case None => BadRequest(Json.toJson("Unable to edit winning bid for bidder #" + bidderId + " and item "))
+          }
+      }
+      Await.result(resultFuture, Util.defaultAwaitTimeout)
+    } catch {
+      case e: Exception =>
+        BadRequest(Json.toJson(e.getMessage))
+    }
+  } */
+
+  def deleteWinningBid(winningBidId: Long) = Action { implicit request =>
+    Item.deleteWinningBid(winningBidId)
+    Ok("")
   }
 }

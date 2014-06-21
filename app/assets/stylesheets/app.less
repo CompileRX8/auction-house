@@ -1,4 +1,43 @@
-.jumbotron h1 {
-  text-align: center;
-  margin-bottom: 40px;
+body{
+  margin-top: 60px;
 }
+
+@link-color: #e3ffc7;
+
+.basics-nav {
+  background-color: darkgreen;
+  .navbar-brand {
+    color: @link-color;
+  }
+  .navbar-nav {
+    li a {
+      color: @link-color;
+    }
+    .dropdown-menu {
+      a {
+        color: #000;
+      }
+    }
+  }
+}
+
+.app-form {
+  input.ng-dirty.ng-invalid {
+    background: lightpink;
+  }
+
+  input.ng-dirty.ng-valid {
+    background: lightgreen;
+  }
+}
+
+div.scrollable {
+  height: 500px;
+  overflow-y: auto;
+}
+
+/* AngularJS */
+[ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+  display: none;
+}
+

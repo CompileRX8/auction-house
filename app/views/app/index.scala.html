@@ -1,15 +1,61 @@
-@layout("Creekwood Youth Mission Trip Auction 2014") {
-    <div class="bar-info">Index</div>
-<!--    <div class="jumbotron" ng-controller="TimerController">
-        <div class="container">
-            <div class="col-sm-12">
-                <h1>
-                    {{time | timer}}
-                </h1>
+@()
+<!DOCTYPE html>
+<html>
+    <head>
+        <title data-ng-bind="pageTitle"></title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+        <link rel="stylesheet" media="screen" href="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.css"))" />
+        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
+        @Html(org.webjars.play.RequireJS.setup("javascripts/app"))
+    </head>
+    <body ng-controller="HomeCtrl">
+        @*-- Header -- *@
+        <header class="navbar navbar-inverse navbar-fixed-top basics-nav" ng-controller="HeaderCtrl">
+            <div class="container">
+                <a href="#/" class="navbar-brand">Creekwood Youth Auction 2014</a>
+                <div ng-show="user">
+                    <ul class="nav navbar-nav">
+                        <li><a href="#/bidders">Bidders</a></li>
+                        <li><a href="#/items">Items</a></li>
+                        <li><a href="#/bidentry">Bid Entry</a></li>
+                        <li><a href="#/reconciliation">Reconciliation</a></li>
+                    </ul>
+                    <ul ng-hide="user" class="nav navbar-nav navbar-right">
+                        <li class="dropdown">
+                            <a href="" class="dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-user"></span> {{user.firstName}} {{user.lastName}} ({{user.email}})
+                                <b class="caret"></b>
+                            </a>
+                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
+                                <li>
+                                    <a href="" ng-click="logout()">
+                                        <span class="glyphicon glyphicon-off"></span> Logout
+                                    </a>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+                <div ng-hide="user">
+                    <form class="navbar-form navbar-right" role="form" ng-submit="login()">
+                        <div class="form-group">
+                            <input type="email" placeholder="Email" ng-model="credentials.email" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <input type="password" placeholder="Password" ng-model="credentials.password" class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-success" ng-click="login()">Sign In</button>
+                    </form>
+                </div>
             </div>
-
-            <button class="btn btn-primary col-sm-4 col-sm-offset-1" ng-click="start()">Start</button>
-            <button class="btn btn-default col-sm-4 col-sm-offset-1" ng-click="stop()">Stop</button>
+        </header>
+        @* -- Main Content -- *@
+        <div class="container" ng-cloak>
+            <div ng-view></div>
         </div>
-    </div> -->
-}
+        @*-- Footer -- *@
+        <footer ng-controller="FooterCtrl">
+        </footer>
+    </body>
+</html>

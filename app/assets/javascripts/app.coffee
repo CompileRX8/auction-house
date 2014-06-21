@@ -3,21 +3,26 @@ require [
   'angular',
   './controllers',
   './directives',
-  './filters',
   './services',
   'angular-route'
 ],
-  (angular, controllers) ->
+  (angular) ->
 
-    angular.module('myApp', ['myApp.filters', 'myApp.services', 'myApp.directives', 'ngRoute'])
-      .config ['$routeProvider',
-          ($routeProvider) ->
-            $routeProvider
-              .when '/view1',
-                { templateUrl: 'partials/partial1.html', controller: controllers.MyCtrl1 }
-              .when '/view2',
-                { templateUrl: 'partials/partial2.html', controller: controllers.MyCtrl2 }
-              .otherwise { redirectTo: '/view1' }
-      ]
+    angular.module('AuctionHouse', ['AuctionHouse.services', 'AuctionHouse.directives', 'AuctionHouse.controllers', 'ngRoute'])
+      .config(['$routeProvider',
+        ($routeProvider) ->
+          $routeProvider
+            .when '/home',
+              { templateUrl: 'templates/home.html',            controller: 'HomeCtrl' }
+            .when '/bidders',
+              { templateUrl: 'templates/bidders.html',         controller: 'BiddersCtrl' }
+            .when '/items',
+              { templateUrl: 'templates/items.html',           controller: 'ItemsCtrl' }
+            .when '/bidentry',
+              { templateUrl: 'templates/bidentry.html',        controller: 'BidEntryCtrl' }
+            .when '/reconciliation',
+              { templateUrl: 'templates/reconciliation.html',  controller: 'ReconCtrl' }
+            .otherwise { redirectTo: '/home' }
+      ])
 
-    angular.bootstrap document, ['myApp']
+    angular.bootstrap(document, ['AuctionHouse'])

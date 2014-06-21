@@ -1,1 +1,51 @@
-<h1>Checkout</h1>
+<h1>Bid Entry</h1>
+<div class="container-fluid">
+    <table class="table table-condensed table-hover">
+        <thead>
+        <tr>
+            <th>Item Number</th>
+            <th>Description</th>
+            <th>Bidder ID</th>
+            <th>Name</th>
+            <th>Amount</th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr ng-repeat="bid in winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]"
+            ng-click="setActiveBid(bid.id)" ng-mouseleave="clearActiveBid()">
+            <td>{{bid.item.itemNumber}}</td>
+            <td>{{bid.item.description}}</td>
+            <td>{{bid.bidder.id}}</td>
+            <td>{{bid.bidder.name}}</td>
+            <td>$ {{bid.amount}}</td>
+            <td>
+                <span ng-show="winningbid.id == bid.id">
+                    <button class="btn btn-danger" ng-click="deleteWinningBid(bid.id)">Delete</button>
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <form name="wbForm" novalidate class="app-form">
+                <td>
+                    <input type="text" placeholder="Item Num" name="wbItemNum" ng-model="winningbid.item_num" autofocus required ng-change="item_num_change()">
+                    <span ng-show="wbForm.wbItemNum.$dirty && wbForm.wbItemNum.$error.invalid"><br><em>Invalid Item Number</em></span>
+                </td>
+                <td>{{ winningbid.item_desc }}</td>
+                <td>
+                    <input type="text" placeholder="Bidder ID" name="wbBidderId" ng-model="winningbid.bidder_id" min="1" integer required ng-change="bidder_id_change()">
+                    <span ng-show="wbForm.wbBidderId.$dirty && wbForm.wbBidderId.$error.integer"><br><em>Invalid Bidder ID</em></span>
+                </td>
+                <td>{{ winningbid.bidder_name }}</td>
+                <td>
+                    <input type="text" placeholder="Amount" name="wbAmount" ng-model="winningbid.amount" smart-float required>
+                    <span ng-show="wbForm.wbAmount.$dirty && wbForm.wbAmount.$error.float"><br><em>Invalid Amount</em></span>
+                </td>
+                <td>
+                    <button type="submit" class="btn btn-success" ng-click="addWinningBid()">Add</button>
+                </td>
+            </form>
+        </tr>
+        </tbody>
+    </table>
+</div>

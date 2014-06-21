@@ -15,7 +15,9 @@ object ItemsActor {
   case object GetDonors
   case class DeleteItem(id: Long)
 
-  case class EditWinningBid(winningBidId: Long, bidder: Bidder, amount: BigDecimal)
+  case class EditWinningBid(id: Long, bidder: Bidder, item: Item, amount: BigDecimal)
+  case class DeleteWinningBid(id: Long)
+
   case class WinningBidsByBidder(bidder: Bidder)
   case class WinningBidsByItem(item: Item)
 
@@ -34,6 +36,16 @@ object ItemsActor {
           val newWinningBid = WinningBid(originalWinningBid.id, bidder, originalWinningBid.item, amount)
           winningBids = (winningBids filter { _ != originalWinningBid }) :+ newWinningBid
           Some(newWinningBid)
+        case None =>
+          None
+      }
+    }
+
+    def deleteWinningBid(winningBidId: Long): Option[WinningBid] = {
+      winningBids find { _.id.get == winningBidId } match {
+        case s @ Some(originalWinningBid) =>
+          winningBids = winningBids filter { _ != originalWinningBid }
+          s
         case None =>
           None
       }
@@ -122,6 +134,28 @@ object ItemsPersistence {
         }
     }
   }
+
+  def delete(winningBid: WinningBid): Option[WinningBid] = {
+    db withSession {
+      implicit session =>
+        if(winningBidsQuery.where(_.id === winningBid.id).delete == 1) {
+          Some(winningBid)
+        } else {
+          None
+        }
+    }
+  }
+
+  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Option[WinningBid] = {
+    db withSession {
+      implicit session =>
+        val row = WinningBidRow(Some(winningBidId), bidder.id.get, item.id.get, amount)
+        if(winningBidsQuery.where(_.id === winningBidId).update(row) == 1)
+          Some(row.toWinningBid)
+        else
+          None
+    }
+  }
 }
 
 class ItemsActor extends Actor {
@@ -160,6 +194,24 @@ class ItemsActor extends Actor {
     itemInfo.addWinningBid(winningBid)
     winningBids += (winningBid -> itemInfo)
     winningBid
+  }
+
+  private def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Option[WinningBid] = {
+    (winningBids.filterKeys(_.id.get == winningBidId) map { case (winningBid, _) =>
+      deleteWinningBid(winningBid) flatMap { _ =>
+        findItemInfo(item) flatMap { newItemInfo =>
+          val newWinningBid = WinningBid(Some(winningBidId), bidder, item, amount)
+          Some(createWinningBid(newItemInfo, newWinningBid))
+        }
+      }
+    }).head
+  }
+
+  private def deleteWinningBid(winningBid: WinningBid): Option[WinningBid] = {
+    findItemInfoWithWinningBid(winningBid.id.get) flatMap { itemInfo =>
+      winningBids -= winningBid
+      itemInfo.deleteWinningBid(winningBid.id.get)
+    }
   }
 
   override def receive = {
@@ -212,30 +264,32 @@ class ItemsActor extends Actor {
       }
 
     case newWinningBid @ WinningBid(None, bidder, item, amount) =>
-      findItemInfo(item) match {
-        case Some(itemInfo) =>
-          sender ! ItemsPersistence.create(newWinningBid).map { winningBid =>
+      sender ! (findItemInfo(item) flatMap {
+        itemInfo =>
+          ItemsPersistence.create(newWinningBid).map { winningBid =>
             createWinningBid(itemInfo, winningBid)
             winningBid
           }
-        case None =>
-          sender ! None
-      }
+      })
 
     case winningBid @ WinningBid(idOpt @ Some(id), bidder, item, amount) =>
-      findItemInfo(item) match {
-        case Some(itemInfo) =>
-          createWinningBid(itemInfo, winningBid)
-        case None =>
+      findItemInfo(item) map { itemInfo =>
+        createWinningBid(itemInfo, winningBid)
       }
 
-    case EditWinningBid(winningBidId, bidder, amount) =>
-      findItemInfoWithWinningBid(winningBidId) match {
-        case Some(itemInfo) =>
-          sender ! itemInfo.editWinningBid(winningBidId, bidder, amount)
-        case None =>
-          sender ! None
-      }
+    case EditWinningBid(id, bidder, item, amount) =>
+      sender ! (findItemInfo(item) flatMap { itemInfo =>
+        ItemsPersistence.editWinningBid(id, bidder, item, amount) flatMap { winningBid =>
+          editWinningBid(id, bidder, item, amount)
+        }
+      })
+
+    case DeleteWinningBid(id) =>
+      sender ! (winningBids.filterKeys(_.id.get == id).headOption flatMap { case (winningBid, _) =>
+        ItemsPersistence.delete(winningBid) flatMap { _ =>
+          deleteWinningBid(winningBid)
+        }
+      })
 
     case WinningBidsByBidder(bidder) =>
       sender ! Option(winningBids.keySet.filter(_.bidder == bidder).toList.sortBy(_.id))

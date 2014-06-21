@@ -1,15 +1,32 @@
-<h1>Welcome to Play-Angular Seed <small>Play 2.1 + AngularJS + RequireJS + WebJars</small></h1>
-<p>
-    A web development application template to start developing your reactive Single Page Web Application.
-    The stack consists of <a href="http://www.playframework.com">Playframework 2.1</a>,
-    <a href="http://www.webjars.org">WebJars</a>,
-    <a href="http://www.requirejs.org">RequireJS</a> and
-    <a href="http://www.angularjs.org">AngularJS</a>.
-</p>
-<p>
-    When you are done developing, run <code>play dist</code> on the console to get an optimized,
-    production-ready app.
-</p>
-<p>Enjoy!</p>
-<hr />
-<div data-example>This directive prints to the console.</div>
+<h1>Home</h1>
+<div class="jumbotron">
+    <h1 style="text-align: center">{{ totalBids | currency }}</h1>
+</div>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-1"><strong>Bidder ID</strong></div>
+        <div class="col-md-2"><strong>Bidder Name</strong></div>
+        <div class="col-md-2"><strong>Total Won Bids</strong></div>
+        <div class="col-md-2"><strong>Total Payments</strong></div>
+    </div>
+    <marquee behavior="scroll" scrollamount="2" direction="up" style="height: 500px">
+        <div class="row" ng-repeat-start="bidderdata in biddersdata | filter:hasWinningBids | orderBy: bidder.id">
+            <div class="col-md-1"><h4>{{ bidderdata.bidder.id }}</h4></div>
+            <div class="col-md-2"><h4>{{ bidderdata.bidder.name }}</h4></div>
+            <div class="col-md-2"><h4>{{ winningBidsTotal(bidderdata) | currency }}</h4></div>
+            <div class="col-md-2"><h4>{{ paymentTotal(bidderdata) | currency }}</h4></div>
+        </div>
+        <div class="row">
+            <div class="col-md-10 col-md-offset-2">
+                <div class="row" ng-repeat="bid in bidderdata.winningBids | orderBy: item.itemNumber">
+                    <div class="col-md-1">{{bid.item.itemNumber}}</div>
+                    <div class="col-md-7">{{bid.item.description}} ({{bid.item.donor}})</div>
+                    <div class="col-md-4">{{bid.amount | currency}}</div>
+                </div>
+            </div>
+        </div>
+        <div class="row" ng-repeat-end>
+            <hr>
+        </div>
+    </marquee>
+</div>
