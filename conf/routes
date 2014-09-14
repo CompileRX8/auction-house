@@ -19,7 +19,9 @@ POST        /items/:winningBidId/deletebid        controllers.ItemController.del
 POST        /payments/:bidderId                   controllers.PaymentController.newPayment(bidderId: Long)
 
 GET         /biddersFeed                          controllers.AppController.biddersFeed
+GET         /pushBidders                          controllers.AppController.pushBidders
 GET         /itemsFeed                            controllers.AppController.itemsFeed
+GET         /pushItems                            controllers.AppController.pushItems
 
 POST        /login                                controllers.AppController.login
 POST        /logout                               controllers.AppController.logout

@@ -12,7 +12,7 @@
         </tr>
         </thead>
         <tbody>
-        <tr ng-repeat="bid in winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]"
+        <tr ng-repeat="bid in dataService.winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]"
             ng-click="setActiveBid(bid.id)" ng-mouseleave="clearActiveBid()">
             <td>{{bid.item.itemNumber}}</td>
             <td>{{bid.item.description}}</td>

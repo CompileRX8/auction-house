@@ -9,7 +9,7 @@ import actors.ItemsActor._
 import play.api.libs.json.Json
 import controllers.ItemController.ItemData
 import misc.Util
-import controllers.AppController
+import scala.language.postfixOps
 
 case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal)
 object Item extends ((Option[Long], String, String, String, String, BigDecimal) => Item) {
@@ -52,7 +52,7 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
       winningBidOpt map { _ => updateItems() }
     }
 
-  def updateItems() = {
+  def updateItems(): List[ItemData] = {
     val isFuture = Item.all() map { items =>
       val dataFuture = items map { item =>
         Item.winningBids(item) map { bidsOpt =>
@@ -61,8 +61,7 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
       }
       dataFuture map { Await.result(_, Util.defaultAwaitTimeout) }
     }
-    val is = Await.result(isFuture, Util.defaultAwaitTimeout)
-    AppController.itemsChannel.push(Json.toJson(is))
+    Await.result(isFuture, Util.defaultAwaitTimeout)
   }
 
   def loadFromDataSource() = {

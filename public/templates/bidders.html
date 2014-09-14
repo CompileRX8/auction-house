@@ -1,13 +1,13 @@
 <h1>Bidders</h1>
 <div class="container-fluid">
-    <div class="row" ng-switch="!!activebidder">
+    <div class="row" ng-switch="!!bidderService.activebidder">
         <div class="col-md-2">
             Search: <input ng-model="searchterm">
             <hr>
             New Bidder: <input ng-model="bidder_name">
             <button class="btn btn-success" ng-click="addBidder()">Add</button>
             <hr>
-            <button class="btn btn-primary" ng-click="clearActiveBidder()">Close Bidder</button>
+            <button class="btn btn-primary" ng-click="bidderService.clearActiveBidder()">Close Bidder</button>
         </div>
         <div class="col-md-2 scrollable">
             <table class="table table-condensed table-hover">
@@ -18,16 +18,16 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="bidderdata in biddersdata | filter: searchterm | orderBy: bidder.id"
-                        ng-click="setActiveBidder(bidderdata.bidder.id)">
-                        <td class="text-right">{{bidderdata.bidder.id}}</td>
+                    <tr ng-repeat="bidderdata in dataService.biddersdata | filter: searchterm | orderBy: bidder.id"
+                        ng-click="bidderService.setActiveBidder(bidderdata.bidder.id)">
+                        <td class="text-right">{{ bidderdata.bidder.id }}</td>
                         <td>{{bidderdata.bidder.name}}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
-        <div class="col-md-8" ng-show="activebidder">
-            <h2>{{ activebidder.bidder.name }}</h2>
+        <div class="col-md-8" ng-show="bidderService.activebidder">
+            <h2>{{ bidderService.activebidder.bidder.name }}</h2>
             <h3>Winning Bids</h3>
             <div class="row">
                 <div class="col-md-1"><strong>Item Number</strong></div>
@@ -37,7 +37,7 @@
                 <div class="col-md-1"><strong>Min Bid</strong></div>
                 <div class="col-md-1"><strong>Bid Amount</strong></div>
             </div>
-            <div class="row" ng-repeat="winningbid in activebidder.winningBids">
+            <div class="row" ng-repeat="winningbid in bidderService.activebidder.winningBids">
                 <div class="col-md-1">{{winningbid.item.itemNumber}}</div>
                 <div class="col-md-2">{{winningbid.item.category}}</div>
                 <div class="col-md-2">{{winningbid.item.donor}}</div>
@@ -47,20 +47,20 @@
             </div>
             <div class="row">
                 <div class="col-md-1 col-md-offset-10"><strong>Total:</strong></div>
-                <div class="col-md-1"><strong>{{ winningBidsTotal(activebidder) | currency }}</strong></div>
+                <div class="col-md-1"><strong>{{ dataService.winningBidsTotal(bidderService.activebidder) | currency }}</strong></div>
             </div>
             <h3>Payments</h3>
             <div class="row">
                 <div class="col-md-4"><strong>Description</strong></div>
                 <div class="col-md-4"><strong>Amount</strong></div>
             </div>
-            <div class="row" ng-repeat="payment in activebidder.payments">
+            <div class="row" ng-repeat="payment in bidderService.activebidder.payments">
                 <div class="col-md-4">{{ payment.description }}</div>
                 <div class="col-md-8">{{ payment.amount | currency }}</div>
             </div>
             <div class="row">
                 <div class="col-md-1 col-md-offset-3"><strong>Total:</strong></div>
-                <div class="col-md-8"><strong>{{ paymentTotal(activebidder) | currency }}</strong></div>
+                <div class="col-md-8"><strong>{{ dataService.paymentTotal(bidderService.activebidder) | currency }}</strong></div>
             </div>
             <div class="row">
                 <form name="newpayment" novalidate>

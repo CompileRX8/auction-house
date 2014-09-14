@@ -1,9 +1,9 @@
 
 require [
   'angular',
-  './controllers',
-  './directives',
   './services',
+  './directives',
+  './controllers',
   'angular-route'
 ],
   (angular) ->

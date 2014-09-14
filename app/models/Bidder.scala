@@ -6,8 +6,8 @@ import akka.pattern.ask
 import akka.util.Timeout
 import misc.Util
 import play.api.libs.json.Json
-import controllers.AppController
 import scala.concurrent.Await
+import scala.language.postfixOps
 
 case class BidderData(bidder: Bidder, payments: List[Payment], winningBids: List[WinningBid])
 
@@ -20,6 +20,7 @@ object Bidder extends ((Option[Long], String) => Bidder) {
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
   implicit val bidderDataFormat = Json.format[BidderData]
+  implicit val winningBidFormat = Json.format[WinningBid]
 
   implicit val timeout = Timeout(3 seconds)
 
@@ -45,12 +46,13 @@ object Bidder extends ((Option[Long], String) => Bidder) {
     }
   }
 
-  def delete(id: Long) =
+  def delete(id: Long) = {
     (biddersActor ? DeleteBidder(id)).mapTo[Option[Bidder]] map { bidderOpt =>
       bidderOpt map { _ => updateBidders() }
     }
+  }
 
-  def updateBidders() = {
+  def updateBidders(): List[BidderData] = {
     val biddersDataFuture = Bidder.all() map { bidders =>
       val dataFuture = bidders map { bidder =>
         WinningBid.allByBidder(bidder) flatMap { winningBidsOpt =>
@@ -61,8 +63,7 @@ object Bidder extends ((Option[Long], String) => Bidder) {
       }
       dataFuture.map { Await.result(_, Util.defaultAwaitTimeout) }
     }
-    val biddersData = Await.result(biddersDataFuture, Util.defaultAwaitTimeout)
-    AppController.biddersChannel.push(Json.toJson(biddersData))
+    Await.result(biddersDataFuture, Util.defaultAwaitTimeout)
   }
 
   def loadFromDataSource() = {

@@ -2,14 +2,13 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title data-ng-bind="pageTitle"></title>
+        <title ng-bind="pageTitle"></title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
         <link rel="stylesheet" media="screen" href="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.css"))" />
         <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
-        @Html(org.webjars.play.RequireJS.setup("javascripts/app"))
     </head>
-    <body ng-controller="HomeCtrl">
+    <body>
         @*-- Header -- *@
         <header class="navbar navbar-inverse navbar-fixed-top basics-nav" ng-controller="HeaderCtrl">
             <div class="container">
@@ -57,5 +56,6 @@
         @*-- Footer -- *@
         <footer ng-controller="FooterCtrl">
         </footer>
+        @Html(org.webjars.play.RequireJS.setup("javascripts/app.js"))
     </body>
 </html>

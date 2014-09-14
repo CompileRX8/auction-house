@@ -1,6 +1,6 @@
 <h1>Home</h1>
 <div class="jumbotron">
-    <h1 style="text-align: center">{{ totalBids | currency }}</h1>
+    <h1 style="text-align: center">{{ dataService.totalBids | currency }}</h1>
 </div>
 <div class="container-fluid">
     <div class="row">
@@ -10,11 +10,11 @@
         <div class="col-md-2"><strong>Total Payments</strong></div>
     </div>
     <marquee behavior="scroll" scrollamount="2" direction="up" style="height: 500px">
-        <div class="row" ng-repeat-start="bidderdata in biddersdata | filter:hasWinningBids | orderBy: bidder.id">
+        <div class="row" ng-repeat-start="bidderdata in dataService.biddersdata | filter:dataService.hasWinningBids | orderBy: bidder.id">
             <div class="col-md-1"><h4>{{ bidderdata.bidder.id }}</h4></div>
             <div class="col-md-2"><h4>{{ bidderdata.bidder.name }}</h4></div>
-            <div class="col-md-2"><h4>{{ winningBidsTotal(bidderdata) | currency }}</h4></div>
-            <div class="col-md-2"><h4>{{ paymentTotal(bidderdata) | currency }}</h4></div>
+            <div class="col-md-2"><h4>{{ dataService.winningBidsTotal(bidderdata) | currency }}</h4></div>
+            <div class="col-md-2"><h4>{{ dataService.paymentTotal(bidderdata) | currency }}</h4></div>
         </div>
         <div class="row">
             <div class="col-md-10 col-md-offset-2">

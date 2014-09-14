@@ -16,16 +16,7 @@ object ItemController extends Controller {
   }
 
   def items = Action { implicit request =>
-    val isFuture = Item.all() map { items =>
-      val dataFuture = items map { item =>
-        Item.winningBids(item) map { bidsOpt =>
-          ItemData(item, bidsOpt.get)
-        }
-      }
-      dataFuture map { Await.result(_, Util.defaultAwaitTimeout) }
-    }
-    val is = Await.result(isFuture, Util.defaultAwaitTimeout)
-    Ok(Json.toJson(is))
+    Ok(Json.toJson(Item.updateItems()))
   }
 
   def newItem = TODO
@@ -41,6 +32,7 @@ object ItemController extends Controller {
         Item.addWinningBid(bidder.get, item.get, amount)
       }
     }
+    AppController.pushItems()
     Ok("")
   }
 
@@ -69,6 +61,7 @@ object ItemController extends Controller {
 
   def deleteWinningBid(winningBidId: Long) = Action { implicit request =>
     Item.deleteWinningBid(winningBidId)
+    AppController.pushItems()
     Ok("")
   }
 }

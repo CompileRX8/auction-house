@@ -16,8 +16,8 @@
                 </tr>
                 </thead>
                 <tbody>
-                <tr ng-repeat="itemdata in itemsdata | filter: searchterm | orderBy: item.itemNumber"
-                    ng-click="setActiveItem(itemdata.item.id)" ng-mouseleave="clearActiveItem()">
+                <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy: item.itemNumber"
+                    ng-click="itemService.setActiveItem(itemdata.item.id)" ng-mouseleave="itemService.clearActiveItem()">
                     <td>{{itemdata.item.itemNumber}}</td>
                     <td>{{itemdata.item.category}}</td>
                     <td>{{itemdata.item.donor}}</td>
@@ -28,7 +28,7 @@
             </table>
         </div>
         <div class="col-md-4 contentarea">
-            <div ng-show="activeitem">
+            <div ng-show="itemService.activeitem">
                 <h2>Winning Bidders</h2>
                 <table class="table table-condensed">
                     <thead>
@@ -39,7 +39,7 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr ng-repeat="winningbid in activeitem.winningBids">
+                    <tr ng-repeat="winningbid in itemService.activeitem.winningBids">
                         <td>{{winningbid.bidder.id}}</td>
                         <td>{{winningbid.bidder.name}}</td>
                         <td>{{winningbid.amount | currency}}</td>

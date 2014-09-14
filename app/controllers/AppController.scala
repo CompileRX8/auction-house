@@ -5,6 +5,7 @@ import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumeratee, Concurrent}
+import play.twirl.api.JavaScript
 
 import scala.util.Random
 import play.api.Routes
@@ -25,10 +26,15 @@ object AppController extends Controller with Secured{
   def connDeathWatch(addr: String): Enumeratee[JsValue, JsValue] =
     Enumeratee.onIterateeDone{ () => println(addr + " - SSE disconnected") }
 
+  implicit val bidderFormat = Bidder.bidderFormat
+  implicit val paymentFormat = Bidder.paymentFormat
+  implicit val bidderDataFormat = Bidder.bidderDataFormat
+  implicit val itemFormat = Item.itemFormat
+
   /** Controller action serving bidders */
   def biddersFeed = Action { req =>
     println(req.remoteAddress + " - SSE connected: Bidders")
-    Bidder.updateBidders()
+
     Ok.feed(biddersOut
       &> Concurrent.buffer(50)
       &> connDeathWatch(req.remoteAddress)
@@ -36,15 +42,27 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
+  def pushBidders = Action { req =>
+    val biddersData = Bidder.updateBidders()
+    biddersChannel.push(Json.toJson(biddersData))
+    Ok
+  }
+
   /** Controller action serving items */
   def itemsFeed = Action { req =>
     println(req.remoteAddress + " - SSE connected: Items")
-    Item.updateItems()
+
     Ok.feed(itemsOut
       &> Concurrent.buffer(50)
       &> connDeathWatch(req.remoteAddress)
       &> EventSource()
     ).as("text/event-stream")
+  }
+
+  def pushItems = Action { req =>
+    val itemsData = Item.updateItems()
+    itemsChannel.push(Json.toJson(itemsData))
+    Ok
   }
 
   def javascriptRoutes = Action {
