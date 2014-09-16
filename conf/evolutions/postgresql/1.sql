@@ -1,0 +1,12 @@
+# Bidder schema
+
+# --- !Ups
+
+CREATE TABLE BIDDER (
+    ID BIGSERIAL PRIMARY KEY,
+    NAME TEXT NOT NULL UNIQUE
+);
+
+# --- !Downs
+
+DROP TABLE BIDDER;

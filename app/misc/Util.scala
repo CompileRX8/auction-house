@@ -2,16 +2,11 @@ package misc
 
 import java.sql.{Timestamp, Time, Date}
 import java.util.Calendar
+import play.api.Play.current
+import play.api.db.slick.DB
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 
-/**
- * Created with IntelliJ IDEA.
- * User: luigi
- * Date: 19/04/13
- * Time: 19:16
- * To change this template use File | Settings | File Templates.
- */
 object Util {
 
   def singleton[T](name: String)(implicit man: Manifest[T]): T =
@@ -39,4 +34,13 @@ object Util {
   val defaultAwaitTimeout = Duration(5, TimeUnit.SECONDS)
 
   def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
+
+  def db = {
+    if(System.getProperty("database") != null) {
+      DB(System.getProperty("database"))
+    } else {
+      DB
+    }
+  }
+
 }

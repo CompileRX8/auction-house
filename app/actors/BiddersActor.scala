@@ -35,10 +35,9 @@ object BiddersActor {
 
 object BiddersPersistence {
   import BiddersActor._
-  import play.api.Play.current
-  import play.api.db.DB
-  import scala.slick.driver.PostgresDriver.simple._
+  import play.api.db.slick.Config.driver.simple._
   import scala.slick.jdbc.JdbcBackend
+  import java.sql.SQLException
 
   class Bidders(tag: Tag) extends Table[Bidder](tag, "bidder") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -48,7 +47,7 @@ object BiddersPersistence {
   val biddersQuery = TableQuery[Bidders]
 
   case class PaymentRow(id: Option[Long], bidderId: Long, description: String, amount: BigDecimal) {
-    def bidder(implicit session: JdbcBackend#SessionDef) = biddersQuery.where(_.id === bidderId).first
+    def bidder(implicit session: JdbcBackend#SessionDef) = biddersQuery.filter(_.id === bidderId).first
     def toPayment(implicit session: JdbcBackend#SessionDef): Payment = Payment(id, bidder, description, amount)
   }
   object PaymentRow extends ((Option[Long], Long, String, BigDecimal) => PaymentRow) {
@@ -61,25 +60,29 @@ object BiddersPersistence {
     def description = column[String]("description", O.NotNull)
     def amount = column[BigDecimal]("amount", O.NotNull)
 
-    def bidderFK = foreignKey("bidder_fk", bidderId, biddersQuery)(_.id)
+    def bidderFK = foreignKey("payment_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
 
     def * = (id.?, bidderId, description, amount) <> ( PaymentRow.tupled, PaymentRow.unapply )
   }
   val paymentsQuery = TableQuery[Payments]
 
-  private def db = Database.forDataSource(DB.getDataSource())
-
   def load: Boolean = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
-        biddersQuery.list() map { _.copy() } foreach { biddersActor ! _ }
-        paymentsQuery.list() map { _.copy().toPayment } foreach { biddersActor ! _ }
-        true
+        try {
+          biddersQuery.list map { _.copy() } foreach { biddersActor ! _ }
+          paymentsQuery.list map { _.copy().toPayment } foreach { biddersActor ! _ }
+          true
+        } catch {
+          case sqle: SQLException =>
+            (biddersQuery.ddl ++ paymentsQuery.ddl).create
+            true
+        }
     }
   }
 
   def create(bidder: Bidder): Option[Bidder] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
         val newBidderId = (biddersQuery returning biddersQuery.map(_.id)) += bidder
         Some(Bidder(Some(newBidderId), bidder.name))
@@ -87,7 +90,7 @@ object BiddersPersistence {
   }
 
   def create(payment: Payment): Option[Payment] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
         val newPaymentId = (paymentsQuery returning paymentsQuery.map(_.id)) += PaymentRow.fromPayment(payment)
         Some(Payment(Some(newPaymentId), payment.bidder, payment.description, payment.amount))
@@ -95,9 +98,9 @@ object BiddersPersistence {
   }
   
   def delete(bidder: Bidder): Option[Bidder] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
-        if(biddersQuery.where(_.id === bidder.id).delete == 1) {
+        if(biddersQuery.filter(_.id === bidder.id).delete == 1) {
           Some(bidder)
         } else {
           None

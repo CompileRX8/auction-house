@@ -1,9 +1,11 @@
 package actors
 
 import akka.actor.{Props, Actor}
+import misc.Util
 import models.{Bidder, WinningBid, Item}
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
+import scala.language.postfixOps
 
 object ItemsActor {
   case object LoadFromDataSource
@@ -59,10 +61,9 @@ object ItemsActor {
 
 object ItemsPersistence {
   import ItemsActor._
-  import play.api.Play.current
-  import play.api.db.DB
-  import scala.slick.driver.PostgresDriver.simple._
+  import play.api.db.slick.Config.driver.simple._
   import scala.slick.jdbc.JdbcBackend
+  import java.sql.SQLException
 
   class Items(tag: Tag) extends Table[Item](tag, "item") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -76,8 +77,8 @@ object ItemsPersistence {
   val itemsQuery = TableQuery[Items]
 
   case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: BigDecimal) {
-    def bidder(implicit session: JdbcBackend#SessionDef) = BiddersPersistence.biddersQuery.where(_.id === bidderId).first()
-    def item(implicit session: JdbcBackend#SessionDef) = itemsQuery.where(_.id === itemId).first()
+    def bidder(implicit session: JdbcBackend#SessionDef) = BiddersPersistence.biddersQuery.filter(_.id === bidderId).first
+    def item(implicit session: JdbcBackend#SessionDef) = itemsQuery.filter(_.id === itemId).first
     def toWinningBid(implicit session: JdbcBackend#SessionDef): WinningBid = WinningBid(id, bidder, item, amount)
   }
   object WinningBidRow extends ((Option[Long], Long, Long, BigDecimal) => WinningBidRow) {
@@ -92,24 +93,28 @@ object ItemsPersistence {
     def amount = column[BigDecimal]("amount", O.NotNull)
     def * = (id.?, bidderId, itemId, amount) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
 
-    def bidderFK = foreignKey("bidder_fk", bidderId, BiddersPersistence.biddersQuery)(_.id)
-    def itemFK = foreignKey("item_fk", itemId, itemsQuery)(_.id)
+    def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, BiddersPersistence.biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def itemFK = foreignKey("winningbid_item_id_fk", itemId, itemsQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
   }
   val winningBidsQuery = TableQuery[WinningBids]
 
-  private def db = Database.forDataSource(DB.getDataSource())
-
   def load: Boolean = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
-        itemsQuery.list() map { _.copy() } foreach { itemsActor ! _ }
-        winningBidsQuery.list() map { _.copy().toWinningBid } foreach { itemsActor ! _ }
-        true
+        try {
+          itemsQuery.list map { _.copy() } foreach { itemsActor ! _ }
+          winningBidsQuery.list map { _.copy().toWinningBid } foreach { itemsActor ! _ }
+          true
+        } catch {
+          case _: SQLException =>
+            (itemsQuery.ddl ++ winningBidsQuery.ddl).create
+            true
+        }
     }
   }
 
   def create(item: Item): Option[Item] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
         val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
         Some(Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid))
@@ -117,7 +122,7 @@ object ItemsPersistence {
   }
 
   def create(winningBid: WinningBid): Option[WinningBid] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
         val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
         Some(WinningBid(Some(newWinningBidId), winningBid.bidder, winningBid.item, winningBid.amount))
@@ -125,9 +130,9 @@ object ItemsPersistence {
   }
 
   def delete(item: Item): Option[Item] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
-        if(itemsQuery.where(_.id === item.id).delete == 1) {
+        if(itemsQuery.filter(_.id === item.id).delete == 1) {
           Some(item)
         } else {
           None
@@ -136,9 +141,9 @@ object ItemsPersistence {
   }
 
   def delete(winningBid: WinningBid): Option[WinningBid] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
-        if(winningBidsQuery.where(_.id === winningBid.id).delete == 1) {
+        if(winningBidsQuery.filter(_.id === winningBid.id).delete == 1) {
           Some(winningBid)
         } else {
           None
@@ -147,10 +152,10 @@ object ItemsPersistence {
   }
 
   def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Option[WinningBid] = {
-    db withSession {
+    Util.db withSession {
       implicit session =>
         val row = WinningBidRow(Some(winningBidId), bidder.id.get, item.id.get, amount)
-        if(winningBidsQuery.where(_.id === winningBidId).update(row) == 1)
+        if(winningBidsQuery.filter(_.id === winningBidId).update(row) == 1)
           Some(row.toWinningBid)
         else
           None
