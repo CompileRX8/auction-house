@@ -15,8 +15,8 @@ define ['angular'],
         }
       ]
 
-    mod.factory 'dataService', ['$http',
-      ($http) ->
+    mod.factory 'dataService', ['$http', '$interval',
+      ($http, $interval) ->
         new class DataService
           @count: 0
 
@@ -28,7 +28,10 @@ define ['angular'],
             @winningbids = []
             @totalBids = 0
 
+            @_lastUpdate = Date.now()
+
             updateBidders = (msg) =>
+              @_lastUpdate = Date.now()
               console.log "Received new biddersdata: " + msg
               @biddersdata = @_parseMsg(msg)
 
@@ -36,11 +39,22 @@ define ['angular'],
             @_biddersFeed.addEventListener("message", updateBidders, false)
 
             updateItems = (msg) =>
+              @_lastUpdate = Date.now()
               console.log "Received new itemsdata: " + msg
               @itemsdata = @_parseMsg(msg)
 
             @_itemsFeed = new EventSource("/itemsFeed")
             @_itemsFeed.addEventListener("message", updateItems, false)
+
+            callPush = () =>
+              now = Date.now()
+              timeSinceLastUpdate = now - @_lastUpdate
+              if timeSinceLastUpdate > 15000
+                $http.get('/pushBidders')
+                $http.get('/pushItems')
+                console.log "Call Push"
+
+            @_updateInterval = $interval(callPush, 3000)
 
             console.log "Created DataService"
 

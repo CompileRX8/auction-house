@@ -1,5 +1,6 @@
 package misc
 
+import actors.AuctionDemoActor
 import play.api._
 import play.api.mvc._
 import play.api.mvc.Results._
@@ -17,6 +18,11 @@ object Global extends GlobalSettings {
       }
     }
     Await.result(loadSuccessful, Util.defaultAwaitTimeout)
+
+//    if(app.mode != Mode.Prod) {
+      // Just need to reference this
+      val auctionDemoActor = AuctionDemoActor.auctionDemoActor
+//    }
   }
 
   override def onHandlerNotFound(request: RequestHeader) = {

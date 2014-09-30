@@ -25,7 +25,7 @@ define ['angular'],
           $scope.bidder_name = ''
 
         $scope.addPayment = ->
-          bidderService.addPayment($scope.activebidder.bidder.id, $scope.payment.description, parseFloat($scope.payment.amount))
+          bidderService.addPayment($scope.bidderService.activebidder.bidder.id, $scope.payment.description, parseFloat($scope.payment.amount))
           $scope.payment = {}
 
         dataService.pushBidders()

@@ -26,11 +26,11 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
   def get(id: Long) = (itemsActor ? GetItem(id)).mapTo[Option[Item]]
 
   def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
-    (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Option[Item]] foreach { itemOpt =>
+    (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Option[Item]] map { itemOpt =>
       itemOpt map { _ => updateItems() }
     }
 
-  def delete(id: Long) = (itemsActor ? DeleteItem(id)).mapTo[Option[Item]] foreach { itemOpt =>
+  def delete(id: Long) = (itemsActor ? DeleteItem(id)).mapTo[Option[Item]] map { itemOpt =>
     itemOpt map { _ => updateItems() }
   }
 
@@ -38,17 +38,17 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
   def winningBids(bidder: Bidder) = (itemsActor ? WinningBidsByBidder(bidder)).mapTo[Option[List[WinningBid]]]
 
   def addWinningBid(bidder: Bidder, item: Item, amount: BigDecimal) =
-    (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Option[WinningBid]] foreach { winningBidOpt =>
+    (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
       winningBidOpt map { _ => updateItems() }
     }
 
   def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal) =
-    (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Option[WinningBid]] foreach { winningBidOpt =>
+    (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
       winningBidOpt map { _ => updateItems() }
     }
 
   def deleteWinningBid(winningBidId: Long) =
-    (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Option[WinningBid]] foreach { winningBidOpt =>
+    (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Option[WinningBid]] map { winningBidOpt =>
       winningBidOpt map { _ => updateItems() }
     }
 

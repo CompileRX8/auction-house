@@ -8,11 +8,13 @@ import play.api.libs.iteratee.{Enumeratee, Concurrent}
 import play.twirl.api.JavaScript
 
 import scala.util.Random
-import play.api.Routes
+import play.api.{Logger, Routes}
 import play.api.libs.EventSource
 import models.{Bidder, Item}
 
 object AppController extends Controller with Secured{
+
+  val logger = Logger(AppController.getClass)
 
   def index = withAuth {
     username => implicit request =>
@@ -44,7 +46,10 @@ object AppController extends Controller with Secured{
 
   def pushBidders = Action { req =>
     val biddersData = Bidder.updateBidders()
-    biddersChannel.push(Json.toJson(biddersData))
+    logger.debug(s"biddersData: ${biddersData}")
+    val jsonBiddersData = Json.toJson(biddersData)
+    logger.debug(s"jsonBiddersData: ${jsonBiddersData}")
+    biddersChannel.push(jsonBiddersData)
     Ok
   }
 

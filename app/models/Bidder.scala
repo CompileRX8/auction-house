@@ -6,7 +6,7 @@ import akka.pattern.ask
 import akka.util.Timeout
 import misc.Util
 import play.api.libs.json.Json
-import scala.concurrent.Await
+import scala.concurrent.{Future, Await}
 import scala.language.postfixOps
 
 case class BidderData(bidder: Bidder, payments: List[Payment], winningBids: List[WinningBid])
@@ -27,13 +27,16 @@ object Bidder extends ((Option[Long], String) => Bidder) {
   def payments(bidder: Bidder) =
     (biddersActor ? Payments(bidder)).mapTo[Option[List[Payment]]]
 
+  def paymentsTotal(bidder: Bidder) =
+    (biddersActor ? PaymentsTotal(bidder)).mapTo[Option[BigDecimal]]
+
   def addPayment(bidderId: Long, description: String, amount: BigDecimal) =
-    get(bidderId) map { bidderOpt =>
-      bidderOpt map { bidder =>
+    get(bidderId) flatMap {
+      case Some(bidder) =>
         (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Option[Payment]] map { paymentOpt =>
           paymentOpt map { _ => updateBidders() }
         }
-      }
+      case None => Future(Some(updateBidders()))
     }
 
   def all() = (biddersActor ? GetBidders).mapTo[List[Bidder]]
@@ -52,12 +55,26 @@ object Bidder extends ((Option[Long], String) => Bidder) {
     }
   }
 
+  def totalOwed(bidderId: Long) = {
+    get(bidderId) flatMap {
+      case Some(bidder) =>
+        val totalOwedFuture = WinningBid.totalByBidder(bidder) map { _.getOrElse(BigDecimal(0.0)) }
+        val totalPaymentsFuture = paymentsTotal(bidder) map { _.getOrElse(BigDecimal(0.0)) }
+        totalOwedFuture flatMap { totalOwed =>
+          totalPaymentsFuture map { totalPayments =>
+            Some(totalOwed - totalPayments)
+          }
+        }
+      case None => Future(None)
+    }
+  }
+
   def updateBidders(): List[BidderData] = {
     val biddersDataFuture = Bidder.all() map { bidders =>
       val dataFuture = bidders map { bidder =>
         WinningBid.allByBidder(bidder) flatMap { winningBidsOpt =>
           Bidder.payments(bidder) map { paymentsOpt =>
-            BidderData(bidder, paymentsOpt.get, winningBidsOpt.get)
+            BidderData(bidder, paymentsOpt.getOrElse(List()), winningBidsOpt.getOrElse(List()))
           }
         }
       }
