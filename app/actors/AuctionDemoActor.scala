@@ -1,6 +1,5 @@
 package actors
 
-import controllers.ItemController.ItemData
 import play.api.libs.concurrent.Execution.Implicits._
 import scala.language.postfixOps
 import scala.concurrent.duration._

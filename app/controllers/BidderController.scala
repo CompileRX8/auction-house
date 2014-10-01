@@ -1,19 +1,14 @@
 package controllers
 
 import play.api.mvc.{Action, Controller}
-import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.{Await, Future}
-import models.{BidderData, WinningBid, Payment, Bidder}
-import play.api.data.Form
-import play.api.data.Forms._
-import scala.Some
-import misc.Util
+import models.{BidderData, Payment, WinningBid, Bidder}
 import play.api.libs.json.Json
 
 object BidderController extends Controller {
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
+  implicit val winningBidFormat = Json.format[WinningBid]
   implicit val bidderDataFormat = Json.format[BidderData]
 
   def bidders = Action { implicit request =>

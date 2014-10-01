@@ -9,6 +9,7 @@ object PaymentController extends Controller with Secured {
     val desc = (request.body \ "description").as[String]
     val amount = (request.body \ "amount").as[BigDecimal]
     Bidder.addPayment(bidderId, desc, amount)
+    AppController.pushBidders()
     Ok("")
   }
 }

@@ -7,15 +7,18 @@ import akka.pattern.ask
 import akka.util.Timeout
 import actors.ItemsActor._
 import play.api.libs.json.Json
-import controllers.ItemController.ItemData
 import misc.Util
 import scala.language.postfixOps
+
+case class ItemData(item: Item, winningBids: List[WinningBid])
 
 case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal)
 object Item extends ((Option[Long], String, String, String, String, BigDecimal) => Item) {
   implicit val timeout = Timeout(3 seconds)
 
   implicit val itemFormat = Json.format[Item]
+  implicit val winningBidFormat = Json.format[WinningBid]
+  implicit val itemDataFormat = Json.format[ItemData]
 
   def allCategories() = (itemsActor ? GetCategories).mapTo[List[String]]
   def allDonors() = (itemsActor ? GetDonors).mapTo[List[String]]

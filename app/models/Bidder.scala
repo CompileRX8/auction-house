@@ -19,8 +19,8 @@ object Bidder extends ((Option[Long], String) => Bidder) {
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
-  implicit val bidderDataFormat = Json.format[BidderData]
   implicit val winningBidFormat = Json.format[WinningBid]
+  implicit val bidderDataFormat = Json.format[BidderData]
 
   implicit val timeout = Timeout(3 seconds)
 

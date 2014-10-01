@@ -10,7 +10,7 @@ import play.twirl.api.JavaScript
 import scala.util.Random
 import play.api.{Logger, Routes}
 import play.api.libs.EventSource
-import models.{Bidder, Item}
+import models._
 
 object AppController extends Controller with Secured{
 
@@ -28,10 +28,12 @@ object AppController extends Controller with Secured{
   def connDeathWatch(addr: String): Enumeratee[JsValue, JsValue] =
     Enumeratee.onIterateeDone{ () => println(addr + " - SSE disconnected") }
 
-  implicit val bidderFormat = Bidder.bidderFormat
-  implicit val paymentFormat = Bidder.paymentFormat
-  implicit val bidderDataFormat = Bidder.bidderDataFormat
-  implicit val itemFormat = Item.itemFormat
+  implicit val bidderFormat = Json.format[Bidder]
+  implicit val paymentFormat = Json.format[Payment]
+  implicit val winningBidFormat = Json.format[WinningBid]
+  implicit val bidderDataFormat = Json.format[BidderData]
+  implicit val itemFormat = Json.format[Item]
+  implicit val itemDataFormat = Json.format[ItemData]
 
   /** Controller action serving bidders */
   def biddersFeed = Action { req =>

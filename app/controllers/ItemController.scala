@@ -1,19 +1,15 @@
 package controllers
 
-import play.api.mvc.{Action, Controller, SimpleResult}
+import play.api.mvc.{Action, Controller}
 import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.{Await, Future}
-import models.{Bidder, WinningBid, Item}
-import scala.Some
-import misc.Util
+import models.{ItemData, Bidder, WinningBid, Item}
 import play.api.libs.json.Json
 
 object ItemController extends Controller {
 
-  case class ItemData(item: Item, winningBids: List[WinningBid])
-  object ItemData {
-    implicit val itemFormat = Json.format[ItemData]
-  }
+  implicit val itemFormat = Json.format[Item]
+  implicit val winningBidFormat = Json.format[WinningBid]
+  implicit val itemDataFormat = Json.format[ItemData]
 
   def items = Action { implicit request =>
     Ok(Json.toJson(Item.updateItems()))

@@ -12,7 +12,7 @@ scalaVersion := "2.10.3"
 libraryDependencies ++= Seq(
   jdbc,
   "org.webjars" %% "webjars-play" % "2.3.0",
-  "org.webjars" % "angularjs" % "1.2.23",
+  "org.webjars" % "angularjs" % "1.2.25",
   "org.webjars" % "bootstrap" % "3.2.0",
   "com.typesafe.akka" %% "akka-testkit" % "2.3.4",
   "com.typesafe.play" %% "play-slick" % "0.8.0",

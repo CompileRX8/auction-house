@@ -9,7 +9,6 @@
         <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
     </head>
     <body>
-        <!--img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" width="110" height="110" alt="MSFW logo" /-->
         @*-- Header -- *@
         <header class="navbar navbar-inverse navbar-fixed-top basics-nav" ng-controller="HeaderCtrl">
             <div class="container">
@@ -51,12 +50,20 @@
             </div>
         </header>
         @* -- Main Content -- *@
-        <div class="container" ng-cloak>
-            <div ng-view></div>
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-1 sidebar">
+                    <img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" height="113" width="113" alt="MSFW logo" />
+                </div>
+                <div class="col-md-11 main">
+                    <div ng-view></div>
+                </div>
+            </div>
         </div>
         @*-- Footer -- *@
         <footer ng-controller="FooterCtrl">
         </footer>
         @Html(org.webjars.play.RequireJS.setup("javascripts/app.js"))
+        <script src="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.js"))"></script>
     </body>
 </html>
