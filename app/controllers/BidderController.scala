@@ -12,7 +12,7 @@ object BidderController extends Controller {
   implicit val bidderDataFormat = Json.format[BidderData]
 
   def bidders = Action { implicit request =>
-    Ok(Json.toJson(Bidder.updateBidders()))
+    Ok(Json.toJson(Bidder.currentBidders()))
   }
 
   def newBidder = Action(parse.json) { implicit request =>

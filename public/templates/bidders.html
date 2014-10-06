@@ -1,20 +1,31 @@
 <h1 class="page-header">Bidders</h1>
 <div class="container-fluid">
-    <div class="row" ng-switch="!!bidderService.activebidder">
-        <div class="col-md-2">
-            Search: <input ng-model="searchterm">
-            <hr>
-            New Bidder: <input ng-model="bidder_name">
-            <button class="btn btn-success" ng-click="addBidder()">Add</button>
-            <hr>
-            <button class="btn btn-primary" ng-click="bidderService.clearActiveBidder()">Close Bidder</button>
+    <div class="row">
+        <div class="col-sm-4 col-md-2">
+            <div class="row form-group">
+                <label for="searchterm" class="col-sm-6 col-md-4 control-label">Search</label>
+                <div class="col-sm-6 col-md-8">
+                    <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
+                </div>
+            </div>
+            <div class="row form-group">
+                <label for="biddername" class="col-sm-6 col-md-4 control-label">New Bidder</label>
+                <div class="col-sm-6 col-md-8">
+                    <input type="text" id="biddername" class="form-control" ng-model="bidder_name">
+                </div>
+            </div>
+            <div class="row form-group">
+                <div class="col-sm-6 col-sm-offset-6 col-md-8 col-md-offset-4">
+                    <button class="btn btn-success" ng-click="addBidder()" ng-disabled="bidder_name == ''">Add</button>
+                </div>
+            </div>
         </div>
-        <div class="col-md-2 scrollable">
-            <table class="table table-condensed table-hover">
+        <div class="col-sm-2 col-md-2 scrollable">
+            <table class="table table-condensed table-hover table-responsive">
                 <thead>
                     <tr>
-                        <th><strong>Bidder ID</strong></th>
-                        <th><strong>Name</strong></th>
+                        <th>Bidder ID</th>
+                        <th>Name</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -26,48 +37,72 @@
                 </tbody>
             </table>
         </div>
-        <div class="col-md-8" ng-show="bidderService.activebidder">
-            <h2>{{ bidderService.activebidder.bidder.name }}</h2>
-            <h3>Winning Bids</h3>
-            <div class="row">
-                <div class="col-md-1"><strong>Item Number</strong></div>
-                <div class="col-md-2"><strong>Category</strong></div>
-                <div class="col-md-2"><strong>Donor</strong></div>
-                <div class="col-md-5"><strong>Description</strong></div>
-                <div class="col-md-1"><strong>Min Bid</strong></div>
-                <div class="col-md-1"><strong>Bid Amount</strong></div>
+        <div class="col-sm-6 col-md-8 panel panel-default" ng-show="bidderService.activebidder">
+            <div class="panel-heading row">
+                <h1 class="panel-title col-sm-11"><strong>{{ bidderService.activebidder.bidder.id }} {{ bidderService.activebidder.bidder.name }}</strong></h1>
+                <button type="button" class="close pull-right text-right col-sm-1" ng-click="bidderService.clearActiveBidder()" ng-disabled="!bidderService.activebidder">
+                    <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+                </button>
             </div>
-            <div class="row" ng-repeat="winningbid in bidderService.activebidder.winningBids">
-                <div class="col-md-1">{{winningbid.item.itemNumber}}</div>
-                <div class="col-md-2">{{winningbid.item.category}}</div>
-                <div class="col-md-2">{{winningbid.item.donor}}</div>
-                <div class="col-md-5">{{winningbid.item.description}}</div>
-                <div class="col-md-1">{{winningbid.item.minbid | currency}}</div>
-                <div class="col-md-1">{{winningbid.amount | currency}}</div>
+            <div class="panel-body">
+                <table class="table table-condensed table-responsive">
+                    <tr>
+                        <td colspan="6"><h4>Winning Bids</h4></td>
+                    </tr>
+                    <tr>
+                        <th>Item Number</th>
+                        <th class="text-right">Bid Amount</th>
+                        <th>Description</th>
+                        <th class="text-right">Min Bid</th>
+                        <th>Category</th>
+                        <th>Donor</th>
+                    </tr>
+                    <tr ng-repeat="winningbid in bidderService.activebidder.winningBids">
+                        <td>{{winningbid.item.itemNumber}}</td>
+                        <td class="text-right">{{winningbid.amount | currency}}</td>
+                        <td>{{winningbid.item.description}}</td>
+                        <td class="text-right">{{winningbid.item.minbid | currency}}</td>
+                        <td>{{winningbid.item.category}}</td>
+                        <td>{{winningbid.item.donor}}</td>
+                    </tr>
+                    <tr>
+                        <td><h4>Total:</h4></td>
+                        <td class="text-right"><h4 ng-class="dataService.totalsStyle(bidderService.activebidder)">{{ dataService.winningBidsTotal(bidderService.activebidder) | currency }}</h4></td>
+                        <td colspan="4"></td>
+                    </tr>
+                    <tr>
+                        <td colspan="6"><h4>Payments</h4></td>
+                    </tr>
+                    <tr>
+                        <th>&nbsp;</th>
+                        <th class="text-right">Amount</th>
+                        <th>Description</th>
+                        <th colspan="3">&nbsp;</th>
+                    </tr>
+                    <tr ng-repeat="payment in bidderService.activebidder.payments">
+                        <td>&nbsp;</td>
+                        <td class="text-right">{{ payment.amount | currency }}</td>
+                        <td>{{ payment.description }}</td>
+                        <td colspan="3">&nbsp;</td>
+                    </tr>
+                    <tr ng-class="dataService.totalsStyle(bidderService.activebidder)">
+                        <td><h4>Total:</h4></td>
+                        <td class="text-right"><h4>{{ dataService.paymentTotal(bidderService.activebidder) | currency }}</h4></td>
+                        <td><h4>( Owes: {{ dataService.winningBidsTotal(bidderService.activebidder) - dataService.paymentTotal(bidderService.activebidder) | currency }} )</h4></td>
+                        <td colspan="3">&nbsp;</td>
+                    </tr>
+                </table>
             </div>
-            <div class="row">
-                <div class="col-md-1 col-md-offset-10"><strong>Total:</strong></div>
-                <div class="col-md-1"><strong>{{ dataService.winningBidsTotal(bidderService.activebidder) | currency }}</strong></div>
-            </div>
-            <h3>Payments</h3>
-            <div class="row">
-                <div class="col-md-4"><strong>Description</strong></div>
-                <div class="col-md-4"><strong>Amount</strong></div>
-            </div>
-            <div class="row" ng-repeat="payment in bidderService.activebidder.payments">
-                <div class="col-md-4">{{ payment.description }}</div>
-                <div class="col-md-8">{{ payment.amount | currency }}</div>
-            </div>
-            <div class="row">
-                <div class="col-md-1 col-md-offset-3"><strong>Total:</strong></div>
-                <div class="col-md-8"><strong>{{ dataService.paymentTotal(bidderService.activebidder) | currency }}</strong></div>
-            </div>
-            <div class="row">
-                <form name="newpayment" novalidate>
-                    <div class="col-md-4"><input type="text" name="pDesc" ng-model="payment.description" placeholder="Description" required></div>
-                    <div class="col-md-4"><input type="number" name="pAmt" ng-model="payment.amount" placeholder="Amount" smart-float required></div>
-                    <div class="col-md-4">
-                        <button class="btn btn-success" ng-click="addPayment()">Add Payment</button><br>
+            <div class="panel-footer row">
+                <form name="newpayment" class="css-form" novalidate>
+                    <div class="col-sm-4 col-md-3">
+                        <input type="text" class="form-control" name="pAmt" ng-model="payment.amount" placeholder="Amount" smart-float required>
+                    </div>
+                    <div class="col-sm-4 col-md-6">
+                        <input type="text" class="form-control" name="pDesc" ng-model="payment.description" placeholder="Description" required>
+                    </div>
+                    <div class="col-sm-4 col-md-3">
+                        <button class="btn btn-success" ng-click="addPayment()" ng-disabled="newpayment.$invalid">Add Payment</button>
                     </div>
                 </form>
             </div>

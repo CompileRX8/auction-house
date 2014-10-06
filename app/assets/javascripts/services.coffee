@@ -27,6 +27,8 @@ define ['angular'],
             @itemsdata = {}
             @winningbids = []
             @totalBids = 0
+            @bidderUpdateCallback = null
+            @itemUpdateCallback = null
 
             @_lastUpdate = Date.now()
 
@@ -34,6 +36,8 @@ define ['angular'],
               @_lastUpdate = Date.now()
               console.log "Received new biddersdata: " + msg
               @biddersdata = @_parseMsg(msg)
+              if @bidderUpdateCallback
+                @bidderUpdateCallback()
 
             @_biddersFeed = new EventSource("/biddersFeed")
             @_biddersFeed.addEventListener("message", updateBidders, false)
@@ -42,6 +46,8 @@ define ['angular'],
               @_lastUpdate = Date.now()
               console.log "Received new itemsdata: " + msg
               @itemsdata = @_parseMsg(msg)
+              if @itemUpdateCallback
+                @itemUpdateCallback()
 
             @_itemsFeed = new EventSource("/itemsFeed")
             @_itemsFeed.addEventListener("message", updateItems, false)
@@ -49,12 +55,12 @@ define ['angular'],
             callPush = () =>
               now = Date.now()
               timeSinceLastUpdate = now - @_lastUpdate
-              if timeSinceLastUpdate > 15000
-                $http.get('/pushBidders')
-                $http.get('/pushItems')
+              if timeSinceLastUpdate > 5000
+                @pushBidders()
+                @pushItems()
                 console.log "Call Push"
 
-            @_updateInterval = $interval(callPush, 3000)
+            @_updateInterval = $interval(callPush, 1000)
 
             console.log "Created DataService"
 
@@ -73,6 +79,18 @@ define ['angular'],
             parsedData = JSON.parse(msg.data)
             @_updateTotalBids(parsedData)
             parsedData
+
+          setBidderUpdateCallback: (callback) ->
+            @bidderUpdateCallback = callback
+
+          clearBidderUpdateCallback: () ->
+            @bidderUpdateCallback = null
+
+          setItemUpdateCallback: (callback) ->
+            @itemUpdateCallback = callback
+
+          clearItemUpdateCallback: () ->
+            @itemUpdateCallback = null
 
           hasWinningBids: (bidderdata) ->
             if bidderdata
@@ -94,6 +112,21 @@ define ['angular'],
                 total += payment.amount
             total
 
+          totalsStyle: (bidderdata) ->
+            winningBidsTotal = @winningBidsTotal(bidderdata)
+            paymentsTotal = @paymentTotal(bidderdata)
+            totalsStyle = ""
+
+            if winningBidsTotal > 0
+              if paymentsTotal >= winningBidsTotal
+                totalsStyle = "bg-success"
+              else if paymentsTotal == 0
+                totalsStyle = "bg-danger"
+              else if paymentsTotal > 0
+                totalsStyle = "bg-warning"
+
+            totalsStyle
+
           pushBidders: () ->
             $http.get('/pushBidders')
 
@@ -106,6 +139,12 @@ define ['angular'],
         new class BidderService
           constructor: ->
             @activebidder = undefined
+
+            updateActiveBidder = () =>
+              if @activebidder
+                @setActiveBidder(@activebidder.bidder.id)
+
+            dataService.setBidderUpdateCallback(updateActiveBidder)
 
           addBidder: (name) ->
             $http.post('/bidders', { name: name })
@@ -120,6 +159,8 @@ define ['angular'],
             if(filteredBidders.length is 1)
               @activebidder = filteredBidders[0]
               console.log "Setting active bidder: " + @activebidder
+            else
+              @clearActiveBidder()
 
           clearActiveBidder: ->
             @activebidder = undefined
@@ -131,11 +172,19 @@ define ['angular'],
           constructor: ->
             @activeitem = undefined
 
+            updateActiveItem = () =>
+              if @activeitem
+                @setActiveItem(@activeitem.item.id)
+
+            dataService.setItemUpdateCallback(updateActiveItem)
+
           setActiveItem: (id) ->
             filteredItems = dataService.itemsdata.filter( (itemdata) -> itemdata.item.id is id )
 
             if(filteredItems.length is 1)
               @activeitem = filteredItems[0]
+            else
+              @clearActiveItem()
 
           clearActiveItem: ->
             @activeitem = undefined

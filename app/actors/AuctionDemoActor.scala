@@ -24,7 +24,7 @@ object AuctionDemoActor {
 
   val auctionDemoActor = Akka.system.actorOf(AuctionDemoActor.props)
 
-  val actionSchedule = Akka.system.scheduler.schedule(2 seconds, 2 seconds, auctionDemoActor, AuctionAction)
+  val actionSchedule = Akka.system.scheduler.schedule(10 seconds, 10 seconds, auctionDemoActor, AuctionAction)
 }
 
 class AuctionDemoActor extends Actor with ActorLogging {
@@ -78,25 +78,24 @@ class AuctionDemoActor extends Actor with ActorLogging {
 
     case NewPayment =>
       if(bidderData.size == 0) {
-        log.warning("Cannot add new payment - Bidder Data is empty")
-      } else {
-        val bidderIdx = random.nextInt(bidderData.size)
-        val bidder = bidderData(bidderIdx)
-        val bidderId = bidder.bidder.id.get
-        Bidder.totalOwed(bidderId) map { amountOpt =>
-          amountOpt foreach { amount =>
-            if(amount > 0) {
-              val description = random.nextInt(3) match {
-                case 0 => "Cash"
-                case 1 => "Check #10" + amount.intValue()
-                case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
-              }
-              log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
-              Bidder.addPayment(bidderId, description, amount) map { bidderDataListOpt =>
-                bidderDataListOpt foreach { bidderDataList =>
-                  bidderData = bidderDataList
-                  log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", bidder.bidder, amount, description, bidderData.size)
-                }
+        bidderData = Bidder.currentBidders()
+      }
+      val bidderIdx = random.nextInt(bidderData.size)
+      val bidder = bidderData(bidderIdx)
+      val bidderId = bidder.bidder.id.get
+      Bidder.totalOwed(bidderId) map { amountOpt =>
+        amountOpt foreach { amount =>
+          if(amount > 0) {
+            val description = random.nextInt(3) match {
+              case 0 => "Cash"
+              case 1 => "Check #10" + amount.intValue()
+              case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
+            }
+            log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
+            Bidder.addPayment(bidderId, description, amount) map { bidderDataListOpt =>
+              bidderDataListOpt foreach { bidderDataList =>
+                bidderData = bidderDataList
+                log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", bidder.bidder, amount, description, bidderData.size)
               }
             }
           }
@@ -105,19 +104,19 @@ class AuctionDemoActor extends Actor with ActorLogging {
 
     case NewWinningBid =>
       if(bidderData.size == 0 || itemData.size == 0) {
-        log.warning("Cannot add new winning bid - Bidder Data size: {}  Items size: {}", bidderData.size, itemData.size)
-      } else {
-        val bidderIdx = random.nextInt(bidderData.size)
-        val bidder = bidderData(bidderIdx)
-        val itemIdx = random.nextInt(itemData.size)
-        val item = itemData(itemIdx)
-        val amount = item.item.minbid + random.nextInt(300)
-        log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
-        Item.addWinningBid(bidder.bidder, item.item, amount) map { itemDataListOpt =>
-          itemDataListOpt map { itemDataList =>
-            itemData = itemDataList
-            log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", bidder.bidder, item.item, amount, itemData.size)
-          }
+        bidderData = Bidder.currentBidders()
+        itemData = Item.currentItems()
+      }
+      val bidderIdx = random.nextInt(bidderData.size)
+      val bidder = bidderData(bidderIdx)
+      val itemIdx = random.nextInt(itemData.size)
+      val item = itemData(itemIdx)
+      val amount = item.item.minbid + random.nextInt(300)
+      log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
+      Item.addWinningBid(bidder.bidder, item.item, amount) map { itemDataListOpt =>
+        itemDataListOpt map { itemDataList =>
+          itemData = itemDataList
+          log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", bidder.bidder, item.item, amount, itemData.size)
         }
       }
   }

@@ -12,7 +12,7 @@ object ItemController extends Controller {
   implicit val itemDataFormat = Json.format[ItemData]
 
   def items = Action { implicit request =>
-    Ok(Json.toJson(Item.updateItems()))
+    Ok(Json.toJson(Item.currentItems()))
   }
 
   def newItem = TODO
@@ -28,6 +28,7 @@ object ItemController extends Controller {
         Item.addWinningBid(bidder.get, item.get, amount)
       }
     }
+    AppController.pushBidders()
     AppController.pushItems()
     Ok("")
   }
@@ -57,6 +58,7 @@ object ItemController extends Controller {
 
   def deleteWinningBid(winningBidId: Long) = Action { implicit request =>
     Item.deleteWinningBid(winningBidId)
+    AppController.pushBidders()
     AppController.pushItems()
     Ok("")
   }

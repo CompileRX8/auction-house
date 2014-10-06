@@ -1,7 +1,7 @@
 <h1 class="page-header">Bid Entry</h1>
-<div class="container-fluid scrollable">
-    <table class="table table-condensed table-hover">
-        <thead>
+<div class="container-fluid">
+    <table class="table table-condensed table-hover table-responsive">
+        <thead style="overflow-y: visible">
         <tr>
             <th>Item Number</th>
             <th>Description</th>
@@ -11,41 +11,43 @@
             <th></th>
         </tr>
         </thead>
-        <tbody>
+        <tbody style="overflow-y: scroll">
         <tr ng-repeat="bid in dataService.winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]"
             ng-click="setActiveBid(bid.id)" ng-mouseleave="clearActiveBid()">
             <td>{{bid.item.itemNumber}}</td>
             <td>{{bid.item.description}}</td>
             <td>{{bid.bidder.id}}</td>
             <td>{{bid.bidder.name}}</td>
-            <td>$ {{bid.amount}}</td>
+            <td class="text-right">$ {{bid.amount}}</td>
             <td>
                 <span ng-show="winningbid.id == bid.id">
                     <button class="btn btn-danger" ng-click="deleteWinningBid(bid.id)">Delete</button>
                 </span>
             </td>
         </tr>
+        </tbody>
+        <tfoot style="overflow-y: visible">
         <tr>
-            <form name="wbForm" novalidate class="app-form">
+            <form name="wbForm" class="css-form" novalidate>
                 <td>
-                    <input type="text" placeholder="Item Num" name="wbItemNum" ng-model="winningbid.item_num" autofocus required ng-change="item_num_change()">
+                    <input type="text" class="form-control" placeholder="Item Num" name="wbItemNum" id="wbItemNum" ng-model="winningbid.item_num" autofocus required ng-change="item_num_change()">
                     <span ng-show="wbForm.wbItemNum.$dirty && wbForm.wbItemNum.$error.invalid"><br><em>Invalid Item Number</em></span>
                 </td>
                 <td>{{ winningbid.item_desc }}</td>
                 <td>
-                    <input type="text" placeholder="Bidder ID" name="wbBidderId" ng-model="winningbid.bidder_id" min="1" integer required ng-change="bidder_id_change()">
+                    <input type="text" class="form-control" placeholder="Bidder ID" name="wbBidderId" ng-model="winningbid.bidder_id" min="1" integer required ng-change="bidder_id_change()">
                     <span ng-show="wbForm.wbBidderId.$dirty && wbForm.wbBidderId.$error.integer"><br><em>Invalid Bidder ID</em></span>
                 </td>
                 <td>{{ winningbid.bidder_name }}</td>
                 <td>
-                    <input type="text" placeholder="Amount" name="wbAmount" ng-model="winningbid.amount" smart-float required>
+                    <input type="text" class="form-control" placeholder="Amount" name="wbAmount" ng-model="winningbid.amount" smart-float required>
                     <span ng-show="wbForm.wbAmount.$dirty && wbForm.wbAmount.$error.float"><br><em>Invalid Amount</em></span>
                 </td>
                 <td>
-                    <button type="submit" class="btn btn-success" ng-click="addWinningBid()">Add</button>
+                    <button type="submit" class="btn btn-success" ng-click="addWinningBid()" ng-disabled="wbForm.$invalid">Add</button>
                 </td>
             </form>
         </tr>
-        </tbody>
+        </tfoot>
     </table>
 </div>

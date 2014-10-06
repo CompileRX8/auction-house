@@ -30,11 +30,11 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
 
   def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
     (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Option[Item]] map { itemOpt =>
-      itemOpt map { _ => updateItems() }
+      itemOpt map { _ => currentItems() }
     }
 
   def delete(id: Long) = (itemsActor ? DeleteItem(id)).mapTo[Option[Item]] map { itemOpt =>
-    itemOpt map { _ => updateItems() }
+    itemOpt map { _ => currentItems() }
   }
 
   def winningBids(item: Item) = (itemsActor ? WinningBidsByItem(item)).mapTo[Option[List[WinningBid]]]
@@ -42,20 +42,20 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
 
   def addWinningBid(bidder: Bidder, item: Item, amount: BigDecimal) =
     (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => updateItems() }
+      winningBidOpt map { _ => currentItems() }
     }
 
   def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal) =
     (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => updateItems() }
+      winningBidOpt map { _ => currentItems() }
     }
 
   def deleteWinningBid(winningBidId: Long) =
     (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => updateItems() }
+      winningBidOpt map { _ => currentItems() }
     }
 
-  def updateItems(): List[ItemData] = {
+  def currentItems(): List[ItemData] = {
     val isFuture = Item.all() map { items =>
       val dataFuture = items map { item =>
         Item.winningBids(item) map { bidsOpt =>

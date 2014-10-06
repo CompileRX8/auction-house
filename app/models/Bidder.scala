@@ -34,9 +34,9 @@ object Bidder extends ((Option[Long], String) => Bidder) {
     get(bidderId) flatMap {
       case Some(bidder) =>
         (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Option[Payment]] map { paymentOpt =>
-          paymentOpt map { _ => updateBidders() }
+          paymentOpt map { _ => currentBidders() }
         }
-      case None => Future(Some(updateBidders()))
+      case None => Future(Some(currentBidders()))
     }
 
   def all() = (biddersActor ? GetBidders).mapTo[List[Bidder]]
@@ -45,13 +45,13 @@ object Bidder extends ((Option[Long], String) => Bidder) {
 
   def create(name: String) = {
     (biddersActor ? Bidder(None, name)).mapTo[Option[Bidder]] map { bidderOpt =>
-      bidderOpt map { _ => updateBidders() }
+      bidderOpt map { _ => currentBidders() }
     }
   }
 
   def delete(id: Long) = {
     (biddersActor ? DeleteBidder(id)).mapTo[Option[Bidder]] map { bidderOpt =>
-      bidderOpt map { _ => updateBidders() }
+      bidderOpt map { _ => currentBidders() }
     }
   }
 
@@ -69,7 +69,7 @@ object Bidder extends ((Option[Long], String) => Bidder) {
     }
   }
 
-  def updateBidders(): List[BidderData] = {
+  def currentBidders(): List[BidderData] = {
     val biddersDataFuture = Bidder.all() map { bidders =>
       val dataFuture = bidders map { bidder =>
         WinningBid.allByBidder(bidder) flatMap { winningBidsOpt =>

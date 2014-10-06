@@ -1,48 +1,59 @@
 <h1 class="page-header">Items</h1>
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-2 searchbar" data-spy="affix" data-offset-top="60" data-offset-bottom="200">
-            Search: <input ng-model="searchterm">
+        <div class="col-sm-4 col-md-2">
+            <div class="row form-group">
+                <label for="searchterm" class="col-sm-6 col-md-4 control-label">Search</label>
+                <div class="col-sm-6 col-md-8">
+                    <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
+                </div>
+            </div>
         </div>
         <div class="col-md-6 scrollable">
-            <table class="table table-hover table-condensed">
+            <table class="table table-hover table-condensed table-responsive">
                 <thead>
                 <tr>
                     <th>Item Number</th>
                     <th>Category</th>
                     <th>Donor</th>
                     <th>Description</th>
-                    <th>Min Bid</th>
+                    <th class="text-right">Min Bid</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy: item.itemNumber"
-                    ng-click="itemService.setActiveItem(itemdata.item.id)" ng-mouseleave="itemService.clearActiveItem()">
+                    ng-click="itemService.setActiveItem(itemdata.item.id)">
                     <td>{{itemdata.item.itemNumber}}</td>
                     <td>{{itemdata.item.category}}</td>
                     <td>{{itemdata.item.donor}}</td>
                     <td>{{itemdata.item.description}}</td>
-                    <td>{{itemdata.item.minbid | currency}}</td>
+                    <td class="text-right">{{itemdata.item.minbid | currency}}</td>
                 </tr>
                 </tbody>
             </table>
         </div>
-        <div class="col-md-4 contentarea">
-            <div ng-show="itemService.activeitem">
-                <h2>Winning Bidders</h2>
-                <table class="table table-condensed">
+        <div class="col-md-4 panel panel-default" ng-show="itemService.activeitem">
+            <div class="panel-heading row">
+                <h1 class="panel-title col-sm-11"><strong>{{ itemService.activeitem.item.itemNumber }} {{ itemService.activeitem.item.description }}</strong></h1>
+                <button type="button" class="close pull-right text-right col-sm-1" ng-click="itemService.clearActiveItem()" ng-disabled="!itemService.activeitem">
+                    <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+                </button>
+            </div>
+            <div class="panel-body">
+                <div class="row"><h4 class="col-sm-12">Winning Bidders</h4></div>
+                <table class="table table-condensed table-responsive">
                     <thead>
                     <tr>
                         <th>Bidder ID</th>
                         <th>Name</th>
-                        <th>Bid Amount</th>
+                        <th class="text-right">Bid Amount</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr ng-repeat="winningbid in itemService.activeitem.winningBids">
                         <td>{{winningbid.bidder.id}}</td>
                         <td>{{winningbid.bidder.name}}</td>
-                        <td>{{winningbid.amount | currency}}</td>
+                        <td class="text-right">{{winningbid.amount | currency}}</td>
                     </tr>
                     </tbody>
                 </table>

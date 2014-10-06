@@ -9,60 +9,37 @@
         <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
     </head>
     <body>
-        @*-- Header -- *@
-        <header class="navbar navbar-inverse navbar-fixed-top basics-nav" ng-controller="HeaderCtrl">
-            <div class="container">
-                <a href="#/" class="navbar-brand">MSFW Auction 2014</a>
-                <div ng-show="user">
+        @*-- Navbar -- *@
+        <nav class="navbar navbar-inverse basics-nav" role="navigation" ng-controller="HeaderCtrl">
+            <div class="container-fluid">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar">
+                        <span class="sr-only">Toggle navigation</span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a href="#/" class="navbar-brand">
+                        <img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" height="50" width="50" alt="MSFW logo" />
+                        MSFW Auction 2014
+                    </a>
+                </div>
+                <div class="collapse navbar-collapse" id="main-navbar">
                     <ul class="nav navbar-nav">
                         <li><a href="#/bidders">Bidders</a></li>
                         <li><a href="#/items">Items</a></li>
                         <li><a href="#/bidentry">Bid Entry</a></li>
                         <li><a href="#/reconciliation">Reconciliation</a></li>
                     </ul>
-                    <ul ng-hide="user" class="nav navbar-nav navbar-right">
-                        <li class="dropdown">
-                            <a href="" class="dropdown-toggle" data-toggle="dropdown">
-                                <span class="glyphicon glyphicon-user"></span> {{user.firstName}} {{user.lastName}} ({{user.email}})
-                                <b class="caret"></b>
-                            </a>
-                            <ul class="dropdown-menu" role="menu" aria-labelledby="dLabel">
-                                <li>
-                                    <a href="" ng-click="logout()">
-                                        <span class="glyphicon glyphicon-off"></span> Logout
-                                    </a>
-                                </li>
-                            </ul>
-                        </li>
-                    </ul>
-                </div>
-                <div ng-hide="user">
-                    <form class="navbar-form navbar-right" role="form" ng-submit="login()">
-                        <div class="form-group">
-                            <input type="email" placeholder="Email" ng-model="credentials.email" class="form-control">
-                        </div>
-                        <div class="form-group">
-                            <input type="password" placeholder="Password" ng-model="credentials.password" class="form-control">
-                        </div>
-                        <button type="submit" class="btn btn-success" ng-click="login()">Sign In</button>
-                    </form>
                 </div>
             </div>
-        </header>
+        </nav>
         @* -- Main Content -- *@
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-1 sidebar">
-                    <img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" height="113" width="113" alt="MSFW logo" />
-                </div>
-                <div class="col-md-11 main">
-                    <div ng-view></div>
-                </div>
-            </div>
-        </div>
+        <main>
+            <div ng-view></div>
+        </main>
         @*-- Footer -- *@
-        <footer ng-controller="FooterCtrl">
-        </footer>
+        <footer ng-controller="FooterCtrl" style="position: relative; bottom: 0;">&nbsp;</footer>
         @Html(org.webjars.play.RequireJS.setup("javascripts/app.js"))
         <script src="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.js"))"></script>
     </body>

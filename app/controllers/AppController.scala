@@ -47,10 +47,10 @@ object AppController extends Controller with Secured{
   }
 
   def pushBidders = Action { req =>
-    val biddersData = Bidder.updateBidders()
-    logger.debug(s"biddersData: ${biddersData}")
+    val biddersData = Bidder.currentBidders()
+    logger.debug(s"biddersData: $biddersData")
     val jsonBiddersData = Json.toJson(biddersData)
-    logger.debug(s"jsonBiddersData: ${jsonBiddersData}")
+    logger.debug(s"jsonBiddersData: $jsonBiddersData")
     biddersChannel.push(jsonBiddersData)
     Ok
   }
@@ -67,8 +67,11 @@ object AppController extends Controller with Secured{
   }
 
   def pushItems = Action { req =>
-    val itemsData = Item.updateItems()
-    itemsChannel.push(Json.toJson(itemsData))
+    val itemsData = Item.currentItems()
+    logger.debug(s"itemsData: $itemsData")
+    val jsonItemsData = Json.toJson(itemsData)
+    logger.debug(s"jsonItemsData: $jsonItemsData")
+    itemsChannel.push(jsonItemsData)
     Ok
   }
 
