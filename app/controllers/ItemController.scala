@@ -1,65 +1,129 @@
 package controllers
 
+import play.api.Logger
 import play.api.mvc.{Action, Controller}
-import play.api.libs.concurrent.Execution.Implicits._
-import models.{ItemData, Bidder, WinningBid, Item}
+import models._
 import play.api.libs.json.Json
 
+import scala.util.{Failure, Success}
+
 object ItemController extends Controller {
+
+  val logger = Logger(ItemController.getClass)
 
   implicit val itemFormat = Json.format[Item]
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val itemDataFormat = Json.format[ItemData]
 
   def items = Action { implicit request =>
-    Ok(Json.toJson(Item.currentItems()))
+    Item.currentItems() match {
+      case Success(items) => Ok(Json.toJson(items))
+      case Failure(e: ItemException) =>
+        logger.error("Unable to send items", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to send items", e)
+        BadRequest(e.getMessage)
+    }
   }
 
-  def newItem = TODO
+  def newItem = Action(parse.json) { implicit request =>
+    val itemNumber = (request.body \ "item_num").as[String]
+    val category = (request.body \ "category").as[String]
+    val donor = (request.body \ "donor").as[String]
+    val description = (request.body \ "description").as[String]
+    val minbid = (request.body \ "min_bid").as[BigDecimal]
+    Item.create(itemNumber, category, donor, description, minbid) match {
+      case Success(item) =>
+        AppController.pushItems()
+        Ok(s"Created item ${item.itemNumber} ${item.description}")
+      case Failure(e: ItemException) =>
+        logger.error("Unable to create item", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to create item", e)
+        BadRequest(e.getMessage)
+    }
+  }
 
-  def deleteItem(itemId: Long) = TODO
+  def deleteItem(itemId: Long) = Action { implicit request =>
+    Item.delete(itemId) match {
+      case Success(item) =>
+        AppController.pushItems()
+        Ok(s"Deleted item ${item.itemNumber} ${item.description}")
+      case Failure(e: ItemException) =>
+        logger.error("Unable to delete item", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to delete item", e)
+        BadRequest(e.getMessage)
+    }
+  }
 
   def addWinningBid(itemId: Long) = Action(parse.json) { implicit request =>
-    // TODO: Add Error Handling for bad bidder ids
     val bidderId = (request.body \ "bidderId").as[Long]
     val amount = (request.body \ "amount").as[BigDecimal]
-    Item.get(itemId) foreach { item =>
-      Bidder.get(bidderId) foreach { bidder =>
-        Item.addWinningBid(bidder.get, item.get, amount)
+    Item.get(itemId) flatMap { itemOpt =>
+      Bidder.get(bidderId) flatMap { bidderOpt =>
+        Item.addWinningBid(bidderOpt.get, itemOpt.get, amount)
       }
+    } match {
+      case Success(winningBid) =>
+        AppController.pushBidders()
+        AppController.pushItems()
+        Ok(s"Added winning bid for ${winningBid.item.itemNumber} ${winningBid.item.description} won by ${winningBid.bidder.name} for ${winningBid.amount}")
+      case Failure(e: ItemException) =>
+        logger.error("Unable to create winning bid", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to create winning bid", e)
+        BadRequest(e.getMessage)
     }
-    AppController.pushBidders()
-    AppController.pushItems()
-    Ok("")
   }
 
-  def editWinningBid(winningBidId: Long) = TODO /* Action(parse.json) { implicit request =>
-    try {
-      val bidderId = (request.body \ "bidderId").as[Long]
-      val itemId = (request.body \ "itemId").as[Long]
-      val amount = (request.body \ "amount").as[BigDecimal]
-      val resultFuture: Future[SimpleResult] = Item.get(itemId) flatMap { itemOpt =>
-        Bidder.get(bidderId) map { bidderOpt =>
-          (itemOpt, bidderOpt)
-        }
-      } flatMap {
-        case (Some(item), Some(bidder)) =>
-          Item.editWinningBid(winningBidId, bidder, item, amount) map {
-            case Some(winningBid) => Ok(Json.toJson(winningBid))
-            case None => BadRequest(Json.toJson("Unable to edit winning bid for bidder #" + bidderId + " and item "))
+  def editWinningBid(winningBidId: Long) = Action(parse.json) { implicit request =>
+    val bidderId = (request.body \ "bidderId").as[Long]
+    val itemId = (request.body \ "itemId").as[Long]
+    val amount = (request.body \ "amount").as[BigDecimal]
+
+    WinningBid.get(winningBidId) flatMap { winningBidOpt =>
+      Item.get(itemId) flatMap { itemOpt =>
+        Bidder.get(bidderId) flatMap { bidderOpt =>
+          (itemOpt, bidderOpt) match {
+            case (Some(item), Some(bidder)) => Item.editWinningBid(winningBidId, bidder, item, amount)
+            case _ => Failure(new ItemException(s"Unable to find item ID $itemId or bidder ID $bidderId"))
           }
+        }
       }
-      Await.result(resultFuture, Util.defaultAwaitTimeout)
-    } catch {
-      case e: Exception =>
-        BadRequest(Json.toJson(e.getMessage))
+    } match {
+      case Success(winningBid) =>
+        AppController.pushBidders()
+        AppController.pushItems()
+        Ok(s"Edited winning bid for ${winningBid.item.itemNumber} ${winningBid.item.description} won by ${winningBid.bidder.name} for ${winningBid.amount}")
+      case Failure(e: BidderException) =>
+        logger.error("Unable to edit winning bid", e)
+        BadRequest(e.message)
+      case Failure(e: ItemException) =>
+        logger.error("Unable to edit winning bid", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to edit winning bid", e)
+        BadRequest(e.getMessage)
     }
-  } */
+  }
 
   def deleteWinningBid(winningBidId: Long) = Action { implicit request =>
-    Item.deleteWinningBid(winningBidId)
-    AppController.pushBidders()
-    AppController.pushItems()
-    Ok("")
+    Item.deleteWinningBid(winningBidId) match {
+      case Success(winningBid) =>
+        AppController.pushBidders()
+        AppController.pushItems()
+        Ok(s"Deleted winning bid for ${winningBid.item.itemNumber} ${winningBid.item.description} won by ${winningBid.bidder.name} for ${winningBid.amount}")
+      case Failure(e: ItemException) =>
+        logger.error("Unable to delete winning bid", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to delete winning bid", e)
+        BadRequest(e.getMessage)
+    }
   }
 }

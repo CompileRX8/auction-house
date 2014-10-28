@@ -7,7 +7,7 @@ import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.iteratee.{Enumeratee, Concurrent}
 import play.twirl.api.JavaScript
 
-import scala.util.Random
+import scala.util.{Failure, Success, Random}
 import play.api.{Logger, Routes}
 import play.api.libs.EventSource
 import models._
@@ -47,12 +47,17 @@ object AppController extends Controller with Secured{
   }
 
   def pushBidders = Action { req =>
-    val biddersData = Bidder.currentBidders()
-    logger.debug(s"biddersData: $biddersData")
-    val jsonBiddersData = Json.toJson(biddersData)
-    logger.debug(s"jsonBiddersData: $jsonBiddersData")
-    biddersChannel.push(jsonBiddersData)
-    Ok
+    Bidder.currentBidders() match {
+      case Success(biddersData) =>
+        logger.debug(s"biddersData: $biddersData")
+        val jsonBiddersData = Json.toJson(biddersData)
+        logger.debug(s"jsonBiddersData: $jsonBiddersData")
+        biddersChannel.push(jsonBiddersData)
+        Ok
+      case Failure(e) =>
+        logger.error("Failed to push bidders", e)
+        BadRequest(e.getMessage)
+    }
   }
 
   /** Controller action serving items */
@@ -67,12 +72,17 @@ object AppController extends Controller with Secured{
   }
 
   def pushItems = Action { req =>
-    val itemsData = Item.currentItems()
-    logger.debug(s"itemsData: $itemsData")
-    val jsonItemsData = Json.toJson(itemsData)
-    logger.debug(s"jsonItemsData: $jsonItemsData")
-    itemsChannel.push(jsonItemsData)
-    Ok
+    Item.currentItems() match {
+      case Success(itemsData) =>
+        logger.debug(s"itemsData: $itemsData")
+        val jsonItemsData = Json.toJson(itemsData)
+        logger.debug(s"jsonItemsData: $jsonItemsData")
+        itemsChannel.push(jsonItemsData)
+        Ok
+      case Failure(e) =>
+        logger.error("Failed to push items", e)
+        BadRequest(e.getMessage)
+    }
   }
 
   def javascriptRoutes = Action {

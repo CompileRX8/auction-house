@@ -1,7 +1,7 @@
 package models
 
 import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.Await
+import scala.concurrent.{Awaitable, Await}
 import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
@@ -9,6 +9,9 @@ import actors.ItemsActor._
 import play.api.libs.json.Json
 import misc.Util
 import scala.language.postfixOps
+import scala.util.Try
+
+case class ItemException(message: String, cause: Exception = null) extends Exception
 
 case class ItemData(item: Item, winningBids: List[WinningBid])
 
@@ -20,51 +23,42 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val itemDataFormat = Json.format[ItemData]
 
-  def allCategories() = (itemsActor ? GetCategories).mapTo[List[String]]
-  def allDonors() = (itemsActor ? GetDonors).mapTo[List[String]]
-  def all() = (itemsActor ? GetItems).mapTo[List[Item]]
-
-  def allByCategory(category: String) = (itemsActor ? GetItemsByCategory(category)).mapTo[List[Item]]
-
-  def get(id: Long) = (itemsActor ? GetItem(id)).mapTo[Option[Item]]
-
-  def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
-    (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Option[Item]] map { itemOpt =>
-      itemOpt map { _ => currentItems() }
-    }
-
-  def delete(id: Long) = (itemsActor ? DeleteItem(id)).mapTo[Option[Item]] map { itemOpt =>
-    itemOpt map { _ => currentItems() }
+  private def wait[T](awaitable: Awaitable[T]): T = {
+    Await.result(awaitable, Util.defaultAwaitTimeout)
   }
 
-  def winningBids(item: Item) = (itemsActor ? WinningBidsByItem(item)).mapTo[Option[List[WinningBid]]]
-  def winningBids(bidder: Bidder) = (itemsActor ? WinningBidsByBidder(bidder)).mapTo[Option[List[WinningBid]]]
+  def allCategories() = wait { (itemsActor ? GetCategories).mapTo[Try[List[String]]] }
+  def allDonors() = wait { (itemsActor ? GetDonors).mapTo[Try[List[String]]] }
+  def all() = wait { (itemsActor ? GetItems).mapTo[Try[List[Item]]] }
+
+  def allByCategory(category: String) = wait { (itemsActor ? GetItemsByCategory(category)).mapTo[Try[List[Item]]] }
+
+  def get(id: Long) = wait { (itemsActor ? GetItem(id)).mapTo[Try[Option[Item]]] }
+
+  def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
+    wait { (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Try[Item]] }
+
+  def delete(id: Long) = wait { (itemsActor ? DeleteItem(id)).mapTo[Try[Item]] }
+
+  def getWinningBid(id: Long) = wait { (itemsActor ? GetWinningBid(id)).mapTo[Try[Option[WinningBid]]] }
+  def winningBids(item: Item) = wait { (itemsActor ? WinningBidsByItem(item)).mapTo[Try[List[WinningBid]]] }
+  def winningBids(bidder: Bidder) = wait { (itemsActor ? WinningBidsByBidder(bidder)).mapTo[Try[List[WinningBid]]] }
 
   def addWinningBid(bidder: Bidder, item: Item, amount: BigDecimal) =
-    (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => currentItems() }
-    }
+    wait { (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Try[WinningBid]] }
 
   def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal) =
-    (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => currentItems() }
-    }
+    wait { (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Try[WinningBid]] }
 
   def deleteWinningBid(winningBidId: Long) =
-    (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Option[WinningBid]] map { winningBidOpt =>
-      winningBidOpt map { _ => currentItems() }
-    }
+    wait { (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Try[WinningBid]] }
 
-  def currentItems(): List[ItemData] = {
-    val isFuture = Item.all() map { items =>
-      val dataFuture = items map { item =>
-        Item.winningBids(item) map { bidsOpt =>
-          ItemData(item, bidsOpt.get)
-        }
-      }
-      dataFuture map { Await.result(_, Util.defaultAwaitTimeout) }
+  def currentItems(): Try[List[ItemData]] = {
+    Item.all() flatMap { items =>
+      Try(items map { item =>
+        ItemData(item, winningBids(item).getOrElse(List()))
+      })
     }
-    Await.result(isFuture, Util.defaultAwaitTimeout)
   }
 
   def loadFromDataSource() = {
@@ -72,16 +66,19 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
   }
 }
 
+case class WinningBidException(message: String, cause: Exception = null) extends Exception
+
 case class WinningBid(id: Option[Long], bidder: Bidder, item: Item, amount: BigDecimal)
 object WinningBid {
 
   implicit val winningBidFormat = Json.format[WinningBid]
 
+  def get(id: Long) = Item.getWinningBid(id)
+
   def allByBidder(bidder: Bidder) = Item.winningBids(bidder)
 
-  def totalByBidder(bidder: Bidder) = allByBidder(bidder) map { bidsOption =>
-    bidsOption map { bidsList =>
-      (BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount }
+  def totalByBidder(bidder: Bidder): Try[BigDecimal] =
+    allByBidder(bidder) flatMap { bidsList =>
+      Try((BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount})
     }
-  }
 }

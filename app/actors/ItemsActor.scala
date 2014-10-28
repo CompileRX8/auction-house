@@ -2,10 +2,11 @@ package actors
 
 import akka.actor.{Props, Actor}
 import misc.Util
-import models.{Bidder, WinningBid, Item}
+import models._
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
 import scala.language.postfixOps
+import scala.util.{Success, Try, Failure}
 
 object ItemsActor {
   case object LoadFromDataSource
@@ -20,39 +21,9 @@ object ItemsActor {
   case class EditWinningBid(id: Long, bidder: Bidder, item: Item, amount: BigDecimal)
   case class DeleteWinningBid(id: Long)
 
+  case class GetWinningBid(id: Long)
   case class WinningBidsByBidder(bidder: Bidder)
   case class WinningBidsByItem(item: Item)
-
-  private class ItemInfo(val item: Item) {
-    private var winningBids: List[WinningBid] = Nil
-
-    def addWinningBid(winningBid: WinningBid) {
-      winningBids :+= winningBid
-    }
-
-    def getWinningBids = winningBids
-
-    def editWinningBid(winningBidId: Long, bidder: Bidder, amount: BigDecimal): Option[WinningBid] = {
-      winningBids find { _.id.get == winningBidId } match {
-        case Some(originalWinningBid) =>
-          val newWinningBid = WinningBid(originalWinningBid.id, bidder, originalWinningBid.item, amount)
-          winningBids = (winningBids filter { _ != originalWinningBid }) :+ newWinningBid
-          Some(newWinningBid)
-        case None =>
-          None
-      }
-    }
-
-    def deleteWinningBid(winningBidId: Long): Option[WinningBid] = {
-      winningBids find { _.id.get == winningBidId } match {
-        case s @ Some(originalWinningBid) =>
-          winningBids = winningBids filter { _ != originalWinningBid }
-          s
-        case None =>
-          None
-      }
-    }
-  }
 
   def props = Props(classOf[ItemsActor])
 
@@ -73,6 +44,8 @@ object ItemsPersistence {
     def description = column[String]("description", O.NotNull)
     def minbid = column[BigDecimal]("minbid", O.NotNull)
     def * = (id.?, itemNumber, category, donor, description, minbid) <> ( Item.tupled, Item.unapply )
+
+    def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
   }
   val itemsQuery = TableQuery[Items]
 
@@ -95,6 +68,8 @@ object ItemsPersistence {
 
     def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, BiddersPersistence.biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
     def itemFK = foreignKey("winningbid_item_id_fk", itemId, itemsQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def itemIdbidderIdIdx = index("winningbid_item_id_bidder_id_idx", (itemId, bidderId), unique = true)
+    def bidderIditemIdIdx = index("winningbid_bidder_id_item_id_idx", (bidderId, itemId), unique = true)
   }
   val winningBidsQuery = TableQuery[WinningBids]
 
@@ -113,52 +88,98 @@ object ItemsPersistence {
     }
   }
 
-  def create(item: Item): Option[Item] = {
+  def create(item: Item): Try[Item] = {
     Util.db withSession {
       implicit session =>
-        val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
-        Some(Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid))
+        Try {
+          val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
+          Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid)
+        }
     }
   }
 
-  def create(winningBid: WinningBid): Option[WinningBid] = {
+  def create(winningBid: WinningBid): Try[WinningBid] = {
     Util.db withSession {
       implicit session =>
-        val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
-        Some(WinningBid(Some(newWinningBidId), winningBid.bidder, winningBid.item, winningBid.amount))
+        Try {
+          val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
+          WinningBid(Some(newWinningBidId), winningBid.bidder, winningBid.item, winningBid.amount)
+        }
     }
   }
 
-  def delete(item: Item): Option[Item] = {
+  def delete(item: Item): Try[Item] = {
     Util.db withSession {
       implicit session =>
         if(itemsQuery.filter(_.id === item.id).delete == 1) {
-          Some(item)
+          Success(item)
         } else {
-          None
+          Failure(new ItemException(s"Unable to delete item with unique ID ${item.id}"))
         }
     }
   }
 
-  def delete(winningBid: WinningBid): Option[WinningBid] = {
+  def delete(winningBid: WinningBid): Try[WinningBid] = {
     Util.db withSession {
       implicit session =>
         if(winningBidsQuery.filter(_.id === winningBid.id).delete == 1) {
-          Some(winningBid)
+          Success(winningBid)
         } else {
-          None
+          Failure(new ItemException(s"Unable to delete winning bid with unique ID ${winningBid.id}"))
         }
     }
   }
 
-  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Option[WinningBid] = {
+  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Try[WinningBid] = {
     Util.db withSession {
       implicit session =>
         val row = WinningBidRow(Some(winningBidId), bidder.id.get, item.id.get, amount)
         if(winningBidsQuery.filter(_.id === winningBidId).update(row) == 1)
-          Some(row.toWinningBid)
+          Success(row.toWinningBid)
         else
-          None
+          Failure(new ItemException(s"Unable to edit winning bid with unique ID $winningBidId"))
+    }
+  }
+
+  def winningBidById(id: Long): Try[Option[WinningBid]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(winningBidsQuery.filter(_.id === id).list.headOption.map { row => row.toWinningBid })
+    }
+  }
+
+  def winningBidsByItem(item: Item): Try[List[WinningBid]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(winningBidsQuery.filter(_.itemId === item.id.get).list.map { row => row.toWinningBid })
+    }
+  }
+
+  def winningBidsByBidder(bidder: Bidder): Try[List[WinningBid]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(winningBidsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toWinningBid })
+    }
+  }
+
+  def sortedItems: Try[List[Item]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(itemsQuery.sortBy(_.itemNumber).list.map { row => row.copy() } )
+    }
+  }
+
+  def itemById(id: Long): Try[Option[Item]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(itemsQuery.filter(_.id === id).list.headOption.map { row => row.copy() })
+    }
+  }
+
+  def itemByItemNumber(itemNumber: String): Try[Option[Item]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(itemsQuery.filter(_.itemNumber === itemNumber).list.headOption.map { row => row.copy() })
     }
   }
 }
@@ -166,57 +187,25 @@ object ItemsPersistence {
 class ItemsActor extends Actor {
   import ItemsActor._
 
-  private var items: Set[ItemInfo] = Set.empty
-  private var winningBids: Map[WinningBid, ItemInfo] = Map.empty
-
-  private def findItemInfo(item: Item): Option[ItemInfo] = {
-    items find { _.item == item }
-  }
-
-  private def findItemInfo(id: Long): Option[ItemInfo] = {
-    items find { _.item.id.get == id }
-  }
-
-  private def findItemInfo(itemNumber: String): Option[ItemInfo] = {
-    items find { _.item.itemNumber.equals(itemNumber) }
-  }
-
-  private def findItemInfoWithWinningBid(winningBidId: Long): Option[ItemInfo] = {
-    winningBids.keySet.find(_.id.get == winningBidId).flatMap(winningBids get)
-  }
-
-  private def sortedItems = items.map { _.item }.toList.sortBy { _.itemNumber }
-
-  private val itemStringList = (f: ItemInfo => String) => items.map(f).toList.distinct.sorted
-
-  private def createItemInfo(item: Item): ItemInfo = {
-    val itemInfo = new ItemInfo(item)
-    items += itemInfo
-    itemInfo
-  }
-
-  private def createWinningBid(itemInfo: ItemInfo, winningBid: WinningBid): WinningBid = {
-    itemInfo.addWinningBid(winningBid)
-    winningBids += (winningBid -> itemInfo)
-    winningBid
-  }
-
-  private def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Option[WinningBid] = {
-    (winningBids.filterKeys(_.id.get == winningBidId) map { case (winningBid, _) =>
-      deleteWinningBid(winningBid) flatMap { _ =>
-        findItemInfo(item) flatMap { newItemInfo =>
-          val newWinningBid = WinningBid(Some(winningBidId), bidder, item, amount)
-          Some(createWinningBid(newItemInfo, newWinningBid))
-        }
-      }
-    }).head
-  }
-
-  private def deleteWinningBid(winningBid: WinningBid): Option[WinningBid] = {
-    findItemInfoWithWinningBid(winningBid.id.get) flatMap { itemInfo =>
-      winningBids -= winningBid
-      itemInfo.deleteWinningBid(winningBid.id.get)
+  private def findItem(item: Item): Try[Option[Item]] = {
+    item.id match {
+      case Some(id) => ItemsPersistence.itemById(id)
+      case None => ItemsPersistence.itemByItemNumber(item.itemNumber)
     }
+  }
+
+  private def findItem(id: Long): Try[Option[Item]] = {
+    ItemsPersistence.itemById(id)
+  }
+
+  private def findItem(itemNumber: String): Try[Option[Item]] = {
+    ItemsPersistence.itemByItemNumber(itemNumber)
+  }
+
+  private def sortedItems = ItemsPersistence.sortedItems
+
+  private val itemStringList = (f: Item => String) => sortedItems flatMap { items =>
+    Success(items.map(f).toList.distinct.sorted)
   }
 
   override def receive = {
@@ -227,79 +216,69 @@ class ItemsActor extends Actor {
       sender ! sortedItems
 
     case GetItem(id) =>
-      sender ! (findItemInfo(id) map { _.item })
+      sender ! findItem(id)
 
     case GetItemsByCategory(category) =>
-      sender ! sortedItems.filter { _.category.equals(category) }
+      sender ! sortedItems.flatMap { items =>
+        Success(items filter { item => item.category.equals(category) })
+      }
 
     case GetCategories =>
-      val cats = itemStringList { _.item.category }
+      val cats = itemStringList { _.category }
       sender ! cats
 
     case GetDonors =>
-      val ds = itemStringList { _.item.donor }
+      val ds = itemStringList { _.donor }
       sender ! ds
 
     case newItem @ Item(None, itemNumber, category, donor, description, minbid) =>
-      findItemInfo(itemNumber) match {
-        case Some(_) => sender ! None
-        case None =>
-          sender ! ItemsPersistence.create(newItem).map { item =>
-            createItemInfo(item)
-            item
-          }
+      sender ! findItem(itemNumber).flatMap {
+        case Some(_) => Failure(new ItemException(s"Item number $itemNumber already exists"))
+        case None => ItemsPersistence.create(newItem)
       }
 
     case item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid) =>
-      findItemInfo(itemNumber) match {
-        case Some(_) =>
-        case None =>
-          createItemInfo(item)
-      }
+      // Do nothing since not maintaining our own Set[ItemInfo] anymore
 
     case DeleteItem(id) =>
-      findItemInfo(id) match {
-        case Some(itemInfo) if itemInfo.getWinningBids.isEmpty =>
-          sender ! ItemsPersistence.delete(itemInfo.item).map { item =>
-            items = items filter { _.item.id.get != id }
-            item
+      sender ! findItem(id).flatMap {
+        case Some(item) =>
+          ItemsPersistence.winningBidsByItem(item).flatMap {
+            case Nil => ItemsPersistence.delete(item)
+            case bids => Failure(new ItemException(s"Cannot delete item ID $id with ${bids.length} winning bids"))
           }
         case _ =>
-          sender ! None
+          Failure(new ItemException(s"Cannot find item ID $id"))
       }
 
     case newWinningBid @ WinningBid(None, bidder, item, amount) =>
-      sender ! (findItemInfo(item) flatMap {
-        itemInfo =>
-          ItemsPersistence.create(newWinningBid).map { winningBid =>
-            createWinningBid(itemInfo, winningBid)
-            winningBid
-          }
-      })
-
-    case winningBid @ WinningBid(idOpt @ Some(id), bidder, item, amount) =>
-      findItemInfo(item) map { itemInfo =>
-        createWinningBid(itemInfo, winningBid)
+      sender ! findItem(item).flatMap {
+        case Some(_) => ItemsPersistence.create(newWinningBid)
+        case None => Failure(new WinningBidException(s"Unable to find item to create winning bid"))
       }
 
+    case winningBid @ WinningBid(idOpt @ Some(id), bidder, item, amount) =>
+      // Do nothing since not maintaining our own Map[WinningBid, ItemInfo] anymore
+
+    case GetWinningBid(id) =>
+      sender ! ItemsPersistence.winningBidById(id)
+
     case EditWinningBid(id, bidder, item, amount) =>
-      sender ! (findItemInfo(item) flatMap { itemInfo =>
-        ItemsPersistence.editWinningBid(id, bidder, item, amount) flatMap { winningBid =>
-          editWinningBid(id, bidder, item, amount)
-        }
-      })
+      sender ! findItem(item).flatMap {
+        case Some(_) => ItemsPersistence.editWinningBid(id, bidder, item, amount)
+        case None => Failure(new WinningBidException(s"Unable to find item to edit winning bid"))
+      }
 
     case DeleteWinningBid(id) =>
-      sender ! (winningBids.filterKeys(_.id.get == id).headOption flatMap { case (winningBid, _) =>
-        ItemsPersistence.delete(winningBid) flatMap { _ =>
-          deleteWinningBid(winningBid)
-        }
-      })
+      sender ! ItemsPersistence.winningBidById(id).flatMap {
+        case Some(wb) => ItemsPersistence.delete(wb)
+        case None => Failure(new WinningBidException(s"Cannot find winning bid ID $id to delete"))
+      }
 
     case WinningBidsByBidder(bidder) =>
-      sender ! Option(winningBids.keySet.filter(_.bidder == bidder).toList.sortBy(_.id))
+      sender ! ItemsPersistence.winningBidsByBidder(bidder)
 
     case WinningBidsByItem(item) =>
-      sender ! Option(winningBids.keySet.filter(_.item == item).toList.sortBy(_.id))
+      sender ! ItemsPersistence.winningBidsByItem(item)
   }
 }

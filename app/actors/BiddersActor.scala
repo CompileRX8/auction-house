@@ -1,12 +1,14 @@
 package actors
 
 import akka.actor.{Props, Actor}
-import models.{Item, Payment, Bidder}
+import models.{BidderException, Item, Payment, Bidder}
 import misc.Util
 import scala.concurrent.Await
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
+
+import scala.util.{Failure, Success, Try}
 
 object BiddersActor {
   case object LoadFromDataSource
@@ -16,17 +18,6 @@ object BiddersActor {
   case class DeleteBidder(id: Long)
 
   case class Payments(bidder: Bidder)
-  case class PaymentsTotal(bidder: Bidder)
-
-  class BidderInfo(val bidder: Bidder) {
-    private var payments: List[Payment] = Nil
-
-    def addPayment(payment: Payment) {
-      payments :+= payment
-    }
-
-    def getPayments = payments
-  }
 
   def props = Props(classOf[BiddersActor])
 
@@ -43,6 +34,8 @@ object BiddersPersistence {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def name = column[String]("name", O.NotNull)
     def * = (id.?, name) <> ( Bidder.tupled , Bidder.unapply )
+
+    def nameIdx = index("bidder_name_idx", name, unique = true)
   }
   val biddersQuery = TableQuery[Bidders]
 
@@ -61,6 +54,7 @@ object BiddersPersistence {
     def amount = column[BigDecimal]("amount", O.NotNull)
 
     def bidderFK = foreignKey("payment_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def bidderIdx = index("payment_bidder_id_idx", bidderId)
 
     def * = (id.?, bidderId, description, amount) <> ( PaymentRow.tupled, PaymentRow.unapply )
   }
@@ -81,30 +75,62 @@ object BiddersPersistence {
     }
   }
 
-  def create(bidder: Bidder): Option[Bidder] = {
+  def create(bidder: Bidder): Try[Bidder] = {
     Util.db withSession {
       implicit session =>
-        val newBidderId = (biddersQuery returning biddersQuery.map(_.id)) += bidder
-        Some(Bidder(Some(newBidderId), bidder.name))
+        Try {
+          val newBidderId = (biddersQuery returning biddersQuery.map(_.id)) += bidder
+          Bidder(Some(newBidderId), bidder.name)
+        }
     }
   }
 
-  def create(payment: Payment): Option[Payment] = {
+  def create(payment: Payment): Try[Payment] = {
     Util.db withSession {
       implicit session =>
-        val newPaymentId = (paymentsQuery returning paymentsQuery.map(_.id)) += PaymentRow.fromPayment(payment)
-        Some(Payment(Some(newPaymentId), payment.bidder, payment.description, payment.amount))
+        Try {
+          val newPaymentId = (paymentsQuery returning paymentsQuery.map(_.id)) += PaymentRow.fromPayment(payment)
+          Payment(Some(newPaymentId), payment.bidder, payment.description, payment.amount)
+        }
     }
   }
   
-  def delete(bidder: Bidder): Option[Bidder] = {
+  def delete(bidder: Bidder): Try[Bidder] = {
     Util.db withSession {
       implicit session =>
         if(biddersQuery.filter(_.id === bidder.id).delete == 1) {
-          Some(bidder)
+          Success(bidder)
         } else {
-          None
+          Failure(new BidderException(s"Unable to delete bidder with unique ID ${bidder.id}"))
         }
+    }
+  }
+
+  def paymentsByBidder(bidder: Bidder): Try[List[Payment]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(paymentsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toPayment })
+    }
+  }
+
+  def bidderById(id: Long): Try[Option[Bidder]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(biddersQuery.filter(_.id === id).list.headOption.map { row => row.copy() })
+    }
+  }
+
+  def bidderByName(name: String): Try[Option[Bidder]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(biddersQuery.filter(_.name === name).list.headOption.map { row => row.copy() })
+    }
+  }
+
+  def sortedBidders: Try[List[Bidder]] = {
+    Util.db withSession {
+      implicit session =>
+        Try(biddersQuery.sortBy(_.name).list.map { row => row.copy() } )
     }
   }
 
@@ -113,96 +139,63 @@ object BiddersPersistence {
 class BiddersActor extends Actor {
   import BiddersActor._
 
-  private var bidders: Set[BidderInfo] = Set.empty
-
-  private def findBidderInfo(bidder: Bidder): Option[BidderInfo] = {
-    bidders find { bi => bi.bidder == bidder }
+  private def findBidder(bidder: Bidder): Try[Option[Bidder]] = bidder.id match {
+    case Some(id) => findBidder(id)
+    case None => findBidder(bidder.name)
   }
 
-  private def findBidderInfo(id: Long): Option[BidderInfo] = {
-    bidders find { bi => bi.bidder.id.get == id }
-  }
+  private def findBidder(id: Long): Try[Option[Bidder]] = BiddersPersistence.bidderById(id)
 
-  private def findBidderInfo(name: String): Option[BidderInfo] = {
-    bidders find { bi => bi.bidder.name.equals(name) }
-  }
-
-  private def winningBidsIsEmpty(bidderInfo: BidderInfo): Boolean = {
-    val isEmptyFuture = Item.winningBids(bidderInfo.bidder) map { paymentsOpt =>
-      paymentsOpt map { payments => payments.isEmpty } getOrElse true
-    }
-    Await.result(isEmptyFuture, Util.defaultAwaitTimeout)
-  }
-
-  private def createBidderInfo(bidder: Bidder): BidderInfo = {
-    val bidderInfo = new BidderInfo(bidder)
-    bidders += bidderInfo
-    bidderInfo
-  }
+  private def findBidder(name: String): Try[Option[Bidder]] = BiddersPersistence.bidderByName(name)
 
   override def receive = {
     case LoadFromDataSource =>
       sender ! BiddersPersistence.load
 
     case GetBidders =>
-      val bs = bidders.map(_.bidder).toList.sortBy(_.name)
-      sender ! bs
+      sender ! BiddersPersistence.sortedBidders
 
     case GetBidder(id) =>
-      sender ! (findBidderInfo(id) map { _.bidder })
+      sender ! findBidder(id)
 
     case newBidder @ Bidder(None, name) =>
-      findBidderInfo(name) match {
-        case Some(_) => sender ! None
-        case None =>
-          sender ! BiddersPersistence.create(newBidder).map { bidder =>
-            createBidderInfo(bidder)
-            bidder
-          }
+      sender ! findBidder(name).flatMap {
+        case Some(bidder) => Failure(new BidderException(s"Bidder name $name already exists as ID ${bidder.id.get}"))
+        case None => BiddersPersistence.create(newBidder)
       }
 
     case bidder @ Bidder(idOpt @ Some(id), name) =>
-      findBidderInfo(name) match {
-        case Some(_) =>
-        case None =>
-          createBidderInfo(bidder)
-      }
+    // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
     case DeleteBidder(id) =>
-      findBidderInfo(id) match {
-        case Some(bidderInfo) if bidderInfo.getPayments.isEmpty && winningBidsIsEmpty(bidderInfo) =>
-          sender !  BiddersPersistence.delete(bidderInfo.bidder).map { bidder =>
-            bidders = bidders filter { _.bidder.id.get != id }
-            bidder
+      sender ! findBidder(id).flatMap {
+        case Some(bidder) =>
+          ItemsPersistence.winningBidsByBidder(bidder).flatMap {
+            case Nil =>
+              BiddersPersistence.paymentsByBidder(bidder).flatMap {
+                case Nil =>
+                  BiddersPersistence.delete(bidder)
+                case payments =>
+                  Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with payments"))
+              }
+            case winningBids =>
+              Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with winning bids"))
           }
-        case _ =>
-          sender ! None
+        case None =>
+          Failure(new BidderException(s"Cannot find bidder ID $id"))
       }
 
     case newPayment @ Payment(None, bidder, description, amount) =>
-      findBidderInfo(bidder) match {
-        case Some(bidderInfo) =>
-          sender ! BiddersPersistence.create(newPayment).map { payment =>
-            bidderInfo.addPayment(payment)
-            payment
-          }
-        case None =>
-          sender ! None
+      sender ! findBidder(bidder).flatMap {
+        case Some(bidderInfo) => BiddersPersistence.create(newPayment)
+        case None => Failure(new BidderException(s"Cannot find bidder $bidder"))
       }
 
     case p @ Payment(idOpt @ Some(id), bidder, description, amount) =>
-      findBidderInfo(bidder) match {
-        case Some(bidderInfo) =>
-          bidderInfo.addPayment(p)
-        case None =>
-      }
+    // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
     case Payments(bidder) =>
-      sender ! (findBidderInfo(bidder) map { bi => bi.getPayments })
-
-    case PaymentsTotal(bidder) =>
-      val total = findBidderInfo(bidder) map { bi => (bi.getPayments map { _.amount }).sum }
-      sender ! total
+      sender ! BiddersPersistence.paymentsByBidder(bidder)
 
     case _ =>
   }

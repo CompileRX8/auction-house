@@ -6,8 +6,11 @@ import akka.pattern.ask
 import akka.util.Timeout
 import misc.Util
 import play.api.libs.json.Json
-import scala.concurrent.{Future, Await}
+import scala.concurrent.{Awaitable, Future, Await}
 import scala.language.postfixOps
+import scala.util.{Success, Failure, Try}
+
+case class BidderException(message: String, cause: Exception = null) extends Exception
 
 case class BidderData(bidder: Bidder, payments: List[Payment], winningBids: List[WinningBid])
 
@@ -24,63 +27,53 @@ object Bidder extends ((Option[Long], String) => Bidder) {
 
   implicit val timeout = Timeout(3 seconds)
 
+  private def wait[T](awaitable: Awaitable[T]): T = {
+    Await.result(awaitable, Util.defaultAwaitTimeout)
+  }
+
   def payments(bidder: Bidder) =
-    (biddersActor ? Payments(bidder)).mapTo[Option[List[Payment]]]
+    wait { (biddersActor ? Payments(bidder)).mapTo[Try[List[Payment]]] }
 
-  def paymentsTotal(bidder: Bidder) =
-    (biddersActor ? PaymentsTotal(bidder)).mapTo[Option[BigDecimal]]
+  def paymentsTotal(bidder: Bidder): Try[BigDecimal] = payments(bidder) flatMap { ps =>
+    Try((BigDecimal(0.0) /: ps) { (sum, p) => sum + p.amount })
+  }
 
-  def addPayment(bidderId: Long, description: String, amount: BigDecimal) =
+  def addPayment(bidderId: Long, description: String, amount: BigDecimal): Try[Payment] =
     get(bidderId) flatMap {
       case Some(bidder) =>
-        (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Option[Payment]] map { paymentOpt =>
-          paymentOpt map { _ => currentBidders() }
-        }
-      case None => Future(Some(currentBidders()))
+        wait { (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Try[Payment]] }
+      case None =>
+        Failure(new BidderException(s"Cannot find bidder ID $bidderId to add payment"))
     }
 
-  def all() = (biddersActor ? GetBidders).mapTo[List[Bidder]]
+  def all() = wait { (biddersActor ? GetBidders).mapTo[Try[List[Bidder]]] }
 
-  def get(id: Long) = (biddersActor ? GetBidder(id)).mapTo[Option[Bidder]]
+  def get(id: Long) = wait { (biddersActor ? GetBidder(id)).mapTo[Try[Option[Bidder]]] }
 
-  def create(name: String) = {
-    (biddersActor ? Bidder(None, name)).mapTo[Option[Bidder]] map { bidderOpt =>
-      bidderOpt map { _ => currentBidders() }
-    }
-  }
+  def create(name: String) = wait { (biddersActor ? Bidder(None, name)).mapTo[Try[Bidder]] }
 
-  def delete(id: Long) = {
-    (biddersActor ? DeleteBidder(id)).mapTo[Option[Bidder]] map { bidderOpt =>
-      bidderOpt map { _ => currentBidders() }
-    }
-  }
+  def delete(id: Long) = wait { (biddersActor ? DeleteBidder(id)).mapTo[Try[Bidder]] }
 
-  def totalOwed(bidderId: Long) = {
+  def totalOwed(bidderId: Long): Try[BigDecimal] = {
     get(bidderId) flatMap {
       case Some(bidder) =>
-        val totalOwedFuture = WinningBid.totalByBidder(bidder) map { _.getOrElse(BigDecimal(0.0)) }
-        val totalPaymentsFuture = paymentsTotal(bidder) map { _.getOrElse(BigDecimal(0.0)) }
-        totalOwedFuture flatMap { totalOwed =>
-          totalPaymentsFuture map { totalPayments =>
-            Some(totalOwed - totalPayments)
-          }
-        }
-      case None => Future(None)
+        val totalOwed = WinningBid.totalByBidder(bidder).getOrElse(BigDecimal(0.0))
+        val totalPayments = paymentsTotal(bidder).getOrElse(BigDecimal(0.0))
+        Success(totalOwed - totalPayments)
+      case None => Failure(new BidderException(s"Cannot find bidder ID $bidderId to get total owed"))
     }
   }
 
-  def currentBidders(): List[BidderData] = {
-    val biddersDataFuture = Bidder.all() map { bidders =>
-      val dataFuture = bidders map { bidder =>
-        WinningBid.allByBidder(bidder) flatMap { winningBidsOpt =>
-          Bidder.payments(bidder) map { paymentsOpt =>
-            BidderData(bidder, paymentsOpt.getOrElse(List()), winningBidsOpt.getOrElse(List()))
-          }
+  def currentBidders(): Try[List[BidderData]] = {
+    Bidder.all() flatMap { bidders =>
+      Try {
+        bidders map { bidder =>
+          val payments = Bidder.payments(bidder).getOrElse(List())
+          val winningBids = WinningBid.allByBidder(bidder).getOrElse(List())
+          BidderData(bidder, payments, winningBids)
         }
       }
-      dataFuture.map { Await.result(_, Util.defaultAwaitTimeout) }
     }
-    Await.result(biddersDataFuture, Util.defaultAwaitTimeout)
   }
 
   def loadFromDataSource() = {

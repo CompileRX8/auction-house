@@ -9,7 +9,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-6 scrollable">
+        <div class="col-sm-4 col-md-6 scrollable">
             <table class="table table-hover table-condensed table-responsive">
                 <thead>
                 <tr>
@@ -18,6 +18,7 @@
                     <th>Donor</th>
                     <th>Description</th>
                     <th class="text-right">Min Bid</th>
+                    <th class="text-right">Sold For</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -28,11 +29,12 @@
                     <td>{{itemdata.item.donor}}</td>
                     <td>{{itemdata.item.description}}</td>
                     <td class="text-right">{{itemdata.item.minbid | currency}}</td>
+                    <td class="text-right">{{dataService.winningBidsTotal(itemdata) | currency}}</td>
                 </tr>
                 </tbody>
             </table>
         </div>
-        <div class="col-md-4 panel panel-default" ng-show="itemService.activeitem">
+        <div class="col-sm-4 col-md-4 panel panel-default" ng-show="itemService.activeitem">
             <div class="panel-heading row">
                 <h1 class="panel-title col-sm-11"><strong>{{ itemService.activeitem.item.itemNumber }} {{ itemService.activeitem.item.description }}</strong></h1>
                 <button type="button" class="close pull-right text-right col-sm-1" ng-click="itemService.clearActiveItem()" ng-disabled="!itemService.activeitem">
@@ -60,4 +62,33 @@
             </div>
         </div>
     </div>
+    <form name="newitem" class="css-form" novalidate>
+    <div class="row">
+        <div class="panel panel-default col-sm-12">
+            <div class="panel-heading row">
+                <h1 class="panel-title col-sm-12"><strong>New Item</strong></h1>
+            </div>
+            <div class="panel-body row">
+                <div class="col-sm-2">
+                    <input type="text" class="form-control" name="iItemNum" ng-model="item.item_num" placeholder="Item Number" required>
+                </div>
+                <div class="col-sm-2">
+                    <input type="text" class="form-control" name="iCat" ng-model="item.category" placeholder="Category">
+                </div>
+                <div class="col-sm-2">
+                    <input type="text" class="form-control" name="iDonor" ng-model="item.donor" placeholder="Donor">
+                </div>
+                <div class="col-sm-4">
+                    <input type="text" class="form-control" name="iDesc" ng-model="item.description" placeholder="Description" required>
+                </div>
+                <div class="col-sm-2">
+                    <input type="text" class="form-control" name="iMinBid" ng-model="item.min_bid" placeholder="Min Bid" smart-float required>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button class="btn btn-success" ng-click="addItem()" ng-disabled="newitem.$invalid">New Item</button>
+            </div>
+        </div>
+    </div>
+    </form>
 </div>

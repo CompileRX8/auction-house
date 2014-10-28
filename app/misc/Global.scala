@@ -21,7 +21,7 @@ object Global extends GlobalSettings {
 
 //    if(app.mode != Mode.Prod) {
       // Just need to reference this
-      val auctionDemoActor = AuctionDemoActor.auctionDemoActor
+//      val auctionDemoActor = AuctionDemoActor.auctionDemoActor
 //    }
   }
 

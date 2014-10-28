@@ -15,6 +15,44 @@ define ['angular'],
         }
       ]
 
+    mod.factory 'statusService', ['$http', '$interval',
+      ($http, $interval) ->
+        new class StatusService
+          constructor: () ->
+            @message = null
+            @messageQueue = []
+            @_intervalsMsgShown = 0
+
+            setStatus = () =>
+              if @message
+                if @_intervalsMsgShown >= 10
+                  @_intervalsMsgShown = 0
+                  @message = null
+                else
+                  @_intervalsMsgShown += 1
+              else
+                if @messageQueue.length > 0
+                  @message = @messageQueue.pop()
+
+            @_updateInterval = $interval(setStatus, 500)
+
+            console.log "Created StatusService"
+
+          _addMessage: (text, status) ->
+            @messageQueue.push({text: text, status: status})
+
+          httpPost: (url, data) ->
+            httpSuccess = (data, status, headers, config) =>
+              @_addMessage(data, "alert alert-success")
+              console.log "HTTP Success: data = " + data + " status = " + status
+
+            httpError = (data, status, headers, config) =>
+              @_addMessage(data, "alert alert-danger")
+              console.log "HTTP Error: data = " + data + " status = " + status
+
+            $http.post(url, data).success(httpSuccess).error(httpError)
+    ]
+
     mod.factory 'dataService', ['$http', '$interval',
       ($http, $interval) ->
         new class DataService
@@ -59,6 +97,7 @@ define ['angular'],
                 @pushBidders()
                 @pushItems()
                 console.log "Call Push"
+                @_lastUpdate = now
 
             @_updateInterval = $interval(callPush, 1000)
 
@@ -134,8 +173,8 @@ define ['angular'],
             $http.get('/pushItems')
     ]
 
-    mod.factory 'bidderService', ['$http', 'dataService',
-      ($http, dataService) ->
+    mod.factory 'bidderService', ['dataService', 'statusService',
+      (dataService, statusService) ->
         new class BidderService
           constructor: ->
             @activebidder = undefined
@@ -147,11 +186,11 @@ define ['angular'],
             dataService.setBidderUpdateCallback(updateActiveBidder)
 
           addBidder: (name) ->
-            $http.post('/bidders', { name: name })
+            statusService.httpPost('/bidders', { name: name })
 
           addPayment: (bidder_id, description, amount) ->
             paymentdata = { description: description, amount: amount }
-            $http.post('/payments/' + bidder_id, paymentdata)
+            statusService.httpPost('/payments/' + bidder_id, paymentdata)
 
           setActiveBidder: (id) ->
             filteredBidders = dataService.biddersdata.filter( (bidderdata) -> bidderdata.bidder.id is id )
@@ -166,8 +205,8 @@ define ['angular'],
             @activebidder = undefined
     ]
 
-    mod.factory 'itemService', ['$http', 'dataService',
-      ($http, dataService) ->
+    mod.factory 'itemService', ['dataService', 'statusService',
+      (dataService, statusService) ->
         new class ItemService
           constructor: ->
             @activeitem = undefined
@@ -177,6 +216,10 @@ define ['angular'],
                 @setActiveItem(@activeitem.item.id)
 
             dataService.setItemUpdateCallback(updateActiveItem)
+
+          addItem: (item_num, category, donor, description, min_bid) ->
+            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid) }
+            statusService.httpPost('/items', itemdata)
 
           setActiveItem: (id) ->
             filteredItems = dataService.itemsdata.filter( (itemdata) -> itemdata.item.id is id )
@@ -190,13 +233,13 @@ define ['angular'],
             @activeitem = undefined
     ]
 
-    mod.factory 'bidEntryService', ['$http',
-      ($http) ->
+    mod.factory 'bidEntryService', ['statusService',
+      (statusService) ->
         new class BidEntryService
           addWinningBid: (itemid, bidder_id, amount) ->
             biddata = { bidderId: parseInt(bidder_id), amount: parseFloat(amount) }
-            $http.post('/items/' + itemid + "/bid", biddata)
+            statusService.httpPost('/items/' + itemid + "/bid", biddata)
 
           deleteWinningBid: (id) ->
-            $http.post('/items/' + id + '/deletebid', {})
+            statusService.httpPost('/items/' + id + '/deletebid', {})
     ]

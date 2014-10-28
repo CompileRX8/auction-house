@@ -34,8 +34,16 @@ define ['angular'],
     mod.controller 'ItemsCtrl', ['$scope', 'itemService', 'dataService',
       ($scope, itemService, dataService) ->
         console.log "Creates ItemsCtrl"
+        $scope.item = {}
+
         $scope.dataService = dataService
         $scope.itemService = itemService
+
+        $scope.addItem = ->
+          category = $scope.item.category or ''
+          donor = $scope.item.donor or ''
+          itemService.addItem($scope.item.item_num, category, donor, $scope.item.description, $scope.item.min_bid)
+          $scope.item = {}
 
         dataService.pushItems()
     ]
@@ -105,7 +113,10 @@ define ['angular'],
             $scope.credentials = {}
     ]
 
-    mod.controller 'FooterCtrl', ->
+    mod.controller 'FooterCtrl', ['$scope', 'statusService',
+      ($scope, statusService) ->
+        $scope.statusService = statusService
+    ]
 
     mod.controller 'ReconCtrl', ['$scope', 'dataService',
       ($scope, dataService) ->

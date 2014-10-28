@@ -4,13 +4,12 @@ import play.api.libs.concurrent.Execution.Implicits._
 import scala.language.postfixOps
 import scala.concurrent.duration._
 import akka.actor.{ActorLogging, Actor, Props}
-import akka.pattern.ask
 import akka.util.Timeout
 import models._
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
 
-import scala.util.Random
+import scala.util.{Failure, Success, Random}
 
 object AuctionDemoActor {
 
@@ -57,55 +56,58 @@ class AuctionDemoActor extends Actor with ActorLogging {
     case NewBidder =>
       Names.nextBidder() map { newBidder =>
         log.debug("Adding bidder: {}", newBidder)
-        Bidder.create(newBidder) map { bidderDataListOpt =>
-          bidderDataListOpt map { bidderDataList =>
-            bidderData = bidderDataList
-            log.debug("Added bidder: {}  Bidder Data size: {}", newBidder, bidderData.size)
-          }
+        Bidder.create(newBidder) match {
+          case Success(bidder) =>
+            bidderData = Bidder.currentBidders().getOrElse(List())
+            log.debug("Added bidder: {}  Bidder Data size: {}", bidder, bidderData.size)
+          case Failure(e) =>
+            log.warning(s"Unable to add bidder: ${e.getMessage}")
         }
       }
 
     case NewItem =>
       Items.nextItem() map { newItem =>
         log.debug("Adding item: {}", newItem)
-        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5) map { itemDataListOpt =>
-          itemDataListOpt map { itemDataList =>
-            itemData = itemDataList
-            log.debug("Added item: {}  Item Data size: {}", newItem, itemData.size)
-          }
+        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5) match {
+          case Success(item) =>
+            itemData = Item.currentItems().getOrElse(List())
+            log.debug("Added item: {}  Item Data size: {}", item, itemData.size)
+          case Failure(e) =>
+            log.warning(s"Unable to add item: ${e.getMessage}")
         }
       }
 
     case NewPayment =>
       if(bidderData.size == 0) {
-        bidderData = Bidder.currentBidders()
+        bidderData = Bidder.currentBidders().get
       }
       val bidderIdx = random.nextInt(bidderData.size)
       val bidder = bidderData(bidderIdx)
       val bidderId = bidder.bidder.id.get
-      Bidder.totalOwed(bidderId) map { amountOpt =>
-        amountOpt foreach { amount =>
-          if(amount > 0) {
-            val description = random.nextInt(3) match {
-              case 0 => "Cash"
-              case 1 => "Check #10" + amount.intValue()
-              case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
-            }
-            log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
-            Bidder.addPayment(bidderId, description, amount) map { bidderDataListOpt =>
-              bidderDataListOpt foreach { bidderDataList =>
-                bidderData = bidderDataList
-                log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", bidder.bidder, amount, description, bidderData.size)
-              }
-            }
+      Bidder.totalOwed(bidderId) match {
+        case Success(amount) if amount > 0 =>
+          val description = random.nextInt(3) match {
+            case 0 => "Cash"
+            case 1 => "Check #10" + amount.intValue()
+            case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
           }
-        }
+          log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
+          Bidder.addPayment(bidderId, description, amount) match {
+            case Success(payment) =>
+              bidderData = Bidder.currentBidders().get
+              log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", payment.bidder, payment.amount, payment.description, bidderData.size)
+            case Failure(e) =>
+              log.warning(s"Unable to add payment: ${e.getMessage}")
+          }
+        case Failure(e) =>
+          log.warning(s"Unable to get total owed for bidder $bidderId")
+        case _ =>
       }
 
     case NewWinningBid =>
       if(bidderData.size == 0 || itemData.size == 0) {
-        bidderData = Bidder.currentBidders()
-        itemData = Item.currentItems()
+        bidderData = Bidder.currentBidders().get
+        itemData = Item.currentItems().get
       }
       val bidderIdx = random.nextInt(bidderData.size)
       val bidder = bidderData(bidderIdx)
@@ -113,11 +115,12 @@ class AuctionDemoActor extends Actor with ActorLogging {
       val item = itemData(itemIdx)
       val amount = item.item.minbid + random.nextInt(300)
       log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
-      Item.addWinningBid(bidder.bidder, item.item, amount) map { itemDataListOpt =>
-        itemDataListOpt map { itemDataList =>
-          itemData = itemDataList
-          log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", bidder.bidder, item.item, amount, itemData.size)
-        }
+      Item.addWinningBid(bidder.bidder, item.item, amount) match {
+        case Success(winningBid) =>
+          itemData = Item.currentItems().get
+          log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", winningBid.bidder, winningBid.item, winningBid.amount, itemData.size)
+        case Failure(e) =>
+          log.warning(s"Unable to add winning bid: ${e.getMessage}")
       }
   }
 }
