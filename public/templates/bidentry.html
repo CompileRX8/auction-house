@@ -1,53 +1,134 @@
-<h1 class="page-header">Bid Entry</h1>
-<div class="container-fluid">
+<section class="container-fluid">
+    <header>
+        <h1 class="page-header">Bid Entry</h1>
+    </header>
+    <form name="wbForm" class="css-form" novalidate>
     <table class="table table-condensed table-hover table-responsive">
-        <thead style="overflow-y: visible">
+        <thead>
         <tr>
-            <th>Item Number</th>
-            <th>Description</th>
-            <th>Bidder ID</th>
-            <th>Name</th>
-            <th>Amount</th>
-            <th></th>
+            <th class="col-sm-2">Item Number</th>
+            <th class="col-sm-3">Description</th>
+            <th class="col-sm-2">Bidder ID</th>
+            <th class="col-sm-2">Name</th>
+            <th class="col-sm-2">Amount</th>
+            <th class="col-sm-1"></th>
         </tr>
         </thead>
-        <tbody style="overflow-y: scroll">
-        <tr ng-repeat="bid in dataService.winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]"
-            ng-click="setActiveBid(bid.id)" ng-mouseleave="clearActiveBid()">
-            <td>{{bid.item.itemNumber}}</td>
-            <td>{{bid.item.description}}</td>
-            <td>{{bid.bidder.id}}</td>
-            <td>{{bid.bidder.name}}</td>
-            <td class="text-right">$ {{bid.amount}}</td>
+        <tbody>
+        <tr ng-repeat="winningbid in dataService.winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]">
+            <td ng-click="bidClicked(winningbid.id)">{{winningbid.item.itemNumber}}</td>
+            <td ng-click="bidClicked(winningbid.id)">{{winningbid.item.description}}</td>
+            <td ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.id}}</td>
+            <td ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.name}}</td>
+            <td ng-click="bidClicked(winningbid.id)" class="text-right">{{winningbid.amount | currency}}</td>
             <td>
-                <span ng-show="winningbid.id == bid.id">
-                    <button class="btn btn-danger" ng-click="deleteWinningBid(bid.id)">Delete</button>
+                <span ng-show="bidEntryService.activebid && bidEntryService.activebid.id == winningbid.id">
+                    <button class="btn btn-primary btn-xs" data-toggle="modal" data-target="#editModal">Edit</button>
+                    <button class="btn btn-danger btn-xs" data-toggle="modal" data-target="#deleteModal">Delete</button>
                 </span>
             </td>
         </tr>
         </tbody>
-        <tfoot style="overflow-y: visible">
+        <tfoot>
         <tr>
-            <form name="wbForm" class="css-form" novalidate>
-                <td>
-                    <input type="text" class="form-control" placeholder="Item Num" name="wbItemNum" id="wbItemNum" ng-model="winningbid.item_num" autofocus required ng-change="item_num_change()">
-                    <span ng-show="wbForm.wbItemNum.$dirty && wbForm.wbItemNum.$error.invalid"><br><em>Invalid Item Number</em></span>
-                </td>
-                <td>{{ winningbid.item_desc }}</td>
-                <td>
-                    <input type="text" class="form-control" placeholder="Bidder ID" name="wbBidderId" ng-model="winningbid.bidder_id" min="1" integer required ng-change="bidder_id_change()">
-                    <span ng-show="wbForm.wbBidderId.$dirty && wbForm.wbBidderId.$error.integer"><br><em>Invalid Bidder ID</em></span>
-                </td>
-                <td>{{ winningbid.bidder_name }}</td>
-                <td>
-                    <input type="text" class="form-control" placeholder="Amount" name="wbAmount" ng-model="winningbid.amount" smart-float required>
-                    <span ng-show="wbForm.wbAmount.$dirty && wbForm.wbAmount.$error.float"><br><em>Invalid Amount</em></span>
-                </td>
-                <td>
-                    <button type="submit" class="btn btn-success" ng-click="addWinningBid()" ng-disabled="wbForm.$invalid">Add</button>
-                </td>
-            </form>
+            <td>
+                <input type="text" class="form-control" placeholder="Item Num" name="wbItemNum" id="wbItemNum" ng-model="newbid.itemNumber" autofocus required ng-change="item_num_change(newbid)">
+            </td>
+            <td>{{ newbid.description }}</td>
+            <td>
+                <input type="text" class="form-control" placeholder="Bidder ID" name="wbBidderId" ng-model="newbid.bidderId" min="1" integer required ng-change="bidder_id_change(newbid)">
+            </td>
+            <td>{{ newbid.bidderName }}</td>
+            <td>
+                <div class="input-group">
+                    <span class="input-group-addon">$</span>
+                    <input type="text" class="form-control text-right" placeholder="Amount" name="wbAmount" ng-model="newbid.amount" smart-float required>
+                </div>
+            </td>
+            <td>
+                <button type="submit" class="btn btn-success" ng-click="addWinningBid()" ng-disabled="wbForm.$invalid">Add</button>
+            </td>
         </tr>
         </tfoot>
     </table>
-</div>
+    </form>
+    <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModelLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" ng-click="bidCleared()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    <h4 class="modal-title" id="editModalLabel">Edit Winning Bid</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Item Number</label>
+                            <input type="text" class="form-control" ng-model="editbid.itemNumber" autofocus required ng-change="item_num_change(editbid)">
+                        </div>
+                        <div class="col-sm-3 form-group">
+                            <label class="control-label">Description</label>
+                            <p class="form-control-static">{{editbid.description}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Bidder ID</label>
+                            <input type="text" class="form-control" ng-model="editbid.bidderId" min="1" integer required ng-change="bidder_id_change(editbid)">
+                        </div>
+                        <div class="col-sm-3 form-group">
+                            <label class="control-label">Bidder Name</label>
+                            <p class="form-control-static">{{editbid.bidderName}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Amount</label>
+                            <div class="input-group">
+                                <span class="input-group-addon">$</span>
+                                <input type="text" class="form-control text-right" ng-model="editbid.amount" smart-float required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="bidCleared()">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="editWinningBid()">Edit Winning Bid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModelLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" ng-click="bidCleared()"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    <h4 class="modal-title" id="deleteModalLabel">Delete Winning Bid</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Item Number</label>
+                            <p class="form-control-static">{{bidEntryService.activebid.item.itemNumber}}</p>
+                        </div>
+                        <div class="col-sm-3 form-group">
+                            <label class="control-label">Description</label>
+                            <p class="form-control-static">{{bidEntryService.activebid.item.description}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Bidder ID</label>
+                            <p class="form-control-static">{{bidEntryService.activebid.bidder.id}}</p>
+                        </div>
+                        <div class="col-sm-3 form-group">
+                            <label class="control-label">Bidder Name</label>
+                            <p class="form-control-static">{{bidEntryService.activebid.bidder.name}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Amount</label>
+                            <p class="form-control-static">{{bidEntryService.activebid.amount | currency}}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal" ng-click="bidCleared()">Cancel</button>
+                    <button type="button" class="btn btn-danger" data-dismiss="modal" ng-click="deleteWinningBid()">Delete Winning Bid</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

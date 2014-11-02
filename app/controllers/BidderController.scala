@@ -44,7 +44,22 @@ object BidderController extends Controller {
     }
   }
 
-  def deleteBidder(bidderId: Long) = Action { implicit request =>
+  def editBidder(bidderId: Long) = Action(parse.json) { implicit request =>
+    val name = (request.body \ "name").as[String]
+    Bidder.edit(bidderId, name) match {
+      case Success(bidder) =>
+        AppController.pushBidders()
+        Ok(s"Edited bidder ${bidder.id.get} ${bidder.name}")
+      case Failure(e: BidderException) =>
+        logger.error("Unable to edit bidder", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to edit bidder", e)
+        BadRequest(e.getMessage)
+    }
+  }
+
+  def deleteBidder(bidderId: Long) = Action(parse.json) { implicit request =>
     Bidder.delete(bidderId) match {
       case Success(bidder) =>
         AppController.pushBidders()

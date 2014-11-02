@@ -17,6 +17,7 @@ object ItemsActor {
   case object GetCategories
   case object GetDonors
   case class DeleteItem(id: Long)
+  case class EditItem(item: Item)
 
   case class EditWinningBid(id: Long, bidder: Bidder, item: Item, amount: BigDecimal)
   case class DeleteWinningBid(id: Long)
@@ -88,98 +89,109 @@ object ItemsPersistence {
     }
   }
 
-  def create(item: Item): Try[Item] = {
+  def create(item: Item): Try[Item] = Try {
     Util.db withSession {
       implicit session =>
-        Try {
-          val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
-          Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid)
-        }
+        val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
+        Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid)
     }
   }
 
-  def create(winningBid: WinningBid): Try[WinningBid] = {
+  def create(winningBid: WinningBid): Try[WinningBid] = Try {
     Util.db withSession {
       implicit session =>
-        Try {
-          val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
-          WinningBid(Some(newWinningBidId), winningBid.bidder, winningBid.item, winningBid.amount)
-        }
+        val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
+        WinningBid(Some(newWinningBidId), winningBid.bidder, winningBid.item, winningBid.amount)
     }
   }
 
-  def delete(item: Item): Try[Item] = {
+  def delete(item: Item): Try[Item] = Try {
     Util.db withSession {
       implicit session =>
-        if(itemsQuery.filter(_.id === item.id).delete == 1) {
-          Success(item)
+        val q = itemsQuery.filter(_.id === item.id.get)
+        if((q.length === 1).run && q.delete == 1) {
+          item
         } else {
-          Failure(new ItemException(s"Unable to delete item with unique ID ${item.id}"))
+          throw new ItemException(s"Unable to delete item with unique ID ${item.id.get}")
         }
     }
   }
 
-  def delete(winningBid: WinningBid): Try[WinningBid] = {
+  def delete(winningBid: WinningBid): Try[WinningBid] = Try {
     Util.db withSession {
       implicit session =>
-        if(winningBidsQuery.filter(_.id === winningBid.id).delete == 1) {
-          Success(winningBid)
+        val q = winningBidsQuery.filter(_.id === winningBid.id.get)
+        if((q.length === 1).run && q.delete == 1) {
+          winningBid
         } else {
-          Failure(new ItemException(s"Unable to delete winning bid with unique ID ${winningBid.id}"))
+          throw new ItemException(s"Unable to delete winning bid with unique ID ${winningBid.id.get}")
         }
     }
   }
 
-  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Try[WinningBid] = {
+  def edit(item: Item): Try[Item] = Try {
     Util.db withSession {
       implicit session =>
+        val q = itemsQuery.filter(_.id === item.id.get)
+        if((q.length === 1).run && q.update(item) == 1) {
+          item
+        } else {
+          throw new ItemException(s"Unable to update item with unique ID ${item.id.get}")
+        }
+    }
+  }
+
+  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Try[WinningBid] = Try {
+    Util.db withSession {
+      implicit session =>
+        val q = winningBidsQuery.filter(_.id === winningBidId)
         val row = WinningBidRow(Some(winningBidId), bidder.id.get, item.id.get, amount)
-        if(winningBidsQuery.filter(_.id === winningBidId).update(row) == 1)
-          Success(row.toWinningBid)
+        if((q.length === 1).run && q.update(row) == 1)
+          row.toWinningBid
         else
-          Failure(new ItemException(s"Unable to edit winning bid with unique ID $winningBidId"))
+          throw new ItemException(s"Unable to edit winning bid with unique ID $winningBidId")
     }
   }
 
-  def winningBidById(id: Long): Try[Option[WinningBid]] = {
+  def winningBidById(id: Long): Try[Option[WinningBid]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(winningBidsQuery.filter(_.id === id).list.headOption.map { row => row.toWinningBid })
+        winningBidsQuery.filter(_.id === id).list.headOption.map { row => row.toWinningBid }
     }
   }
 
-  def winningBidsByItem(item: Item): Try[List[WinningBid]] = {
+  def winningBidsByItem(item: Item): Try[List[WinningBid]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(winningBidsQuery.filter(_.itemId === item.id.get).list.map { row => row.toWinningBid })
+        winningBidsQuery.filter(_.itemId === item.id.get).list.map { row => row.toWinningBid }
     }
   }
 
-  def winningBidsByBidder(bidder: Bidder): Try[List[WinningBid]] = {
+  def winningBidsByBidder(bidder: Bidder): Try[List[WinningBid]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(winningBidsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toWinningBid })
+        winningBidsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toWinningBid }
     }
   }
 
-  def sortedItems: Try[List[Item]] = {
+  def sortedItems: Try[List[Item]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(itemsQuery.sortBy(_.itemNumber).list.map { row => row.copy() } )
+        itemsQuery.sortBy(_.itemNumber).list.map { row => row.copy() }
     }
   }
 
-  def itemById(id: Long): Try[Option[Item]] = {
+  def itemById(id: Long): Try[Option[Item]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(itemsQuery.filter(_.id === id).list.headOption.map { row => row.copy() })
+        itemsQuery.filter(_.id === id).list.headOption.map { row => row.copy() }
     }
   }
 
-  def itemByItemNumber(itemNumber: String): Try[Option[Item]] = {
+  def itemByItemNumber(itemNumber: String): Try[Option[Item]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(itemsQuery.filter(_.itemNumber === itemNumber).list.headOption.map { row => row.copy() })
+        itemsQuery.filter(_.itemNumber === itemNumber).list.headOption.map { row => row.copy() }
     }
   }
 }
@@ -250,6 +262,12 @@ class ItemsActor extends Actor {
         case _ =>
           Failure(new ItemException(s"Cannot find item ID $id"))
       }
+
+    case EditItem(item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid)) =>
+      sender ! ItemsPersistence.edit(item)
+
+    case EditItem(item @ Item(None, _, _, _, _, _)) =>
+      sender ! Failure(new ItemException(s"Cannot edit item without item ID"))
 
     case newWinningBid @ WinningBid(None, bidder, item, amount) =>
       sender ! findItem(item).flatMap {

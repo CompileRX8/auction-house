@@ -54,6 +54,8 @@ object Bidder extends ((Option[Long], String) => Bidder) {
 
   def delete(id: Long) = wait { (biddersActor ? DeleteBidder(id)).mapTo[Try[Bidder]] }
 
+  def edit(id: Long, name: String) = wait { (biddersActor ? EditBidder(Bidder(Some(id), name))).mapTo[Try[Bidder]] }
+
   def totalOwed(bidderId: Long): Try[BigDecimal] = {
     get(bidderId) flatMap {
       case Some(bidder) =>

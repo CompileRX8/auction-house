@@ -63,10 +63,11 @@ define ['angular'],
 
             @biddersdata = {}
             @itemsdata = {}
-            @winningbids = []
+            @winningbids = {}
             @totalBids = 0
             @bidderUpdateCallback = null
             @itemUpdateCallback = null
+            @winningBidUpdateCallback = null
 
             @_lastUpdate = Date.now()
 
@@ -76,6 +77,8 @@ define ['angular'],
               @biddersdata = @_parseMsg(msg)
               if @bidderUpdateCallback
                 @bidderUpdateCallback()
+              if @winningBidUpdateCallback
+                @winningBidUpdateCallback()
 
             @_biddersFeed = new EventSource("/biddersFeed")
             @_biddersFeed.addEventListener("message", updateBidders, false)
@@ -86,6 +89,8 @@ define ['angular'],
               @itemsdata = @_parseMsg(msg)
               if @itemUpdateCallback
                 @itemUpdateCallback()
+              if @winningBidUpdateCallback
+                @winningBidUpdateCallback()
 
             @_itemsFeed = new EventSource("/itemsFeed")
             @_itemsFeed.addEventListener("message", updateItems, false)
@@ -96,8 +101,6 @@ define ['angular'],
               if timeSinceLastUpdate > 5000
                 @pushBidders()
                 @pushItems()
-                console.log "Call Push"
-                @_lastUpdate = now
 
             @_updateInterval = $interval(callPush, 1000)
 
@@ -131,9 +134,21 @@ define ['angular'],
           clearItemUpdateCallback: () ->
             @itemUpdateCallback = null
 
+          setWinningBidUpdateCallback: (callback) ->
+            @winningBidUpdateCallback = callback
+
+          clearWinningBidUpdateCallback: () ->
+            @winningBidUpdateCallback = null
+
           hasWinningBids: (bidderdata) ->
             if bidderdata
               bidderdata.winningBids.length > 0
+            else
+              false
+
+          hasPayments: (bidderdata) ->
+            if bidderdata
+              bidderdata.payments.length > 0
             else
               false
 
@@ -159,7 +174,7 @@ define ['angular'],
             if winningBidsTotal > 0
               if paymentsTotal >= winningBidsTotal
                 totalsStyle = "bg-success"
-              else if paymentsTotal == 0
+              else if paymentsTotal <= 0
                 totalsStyle = "bg-danger"
               else if paymentsTotal > 0
                 totalsStyle = "bg-warning"
@@ -187,6 +202,12 @@ define ['angular'],
 
           addBidder: (name) ->
             statusService.httpPost('/bidders', { name: name })
+
+          editBidder: (bidder_id, name) ->
+            statusService.httpPost('/bidders/' + bidder_id + '/edit', { name: name })
+
+          deleteBidder: (bidder_id) ->
+            statusService.httpPost('/bidders/' + bidder_id + '/delete', {})
 
           addPayment: (bidder_id, description, amount) ->
             paymentdata = { description: description, amount: amount }
@@ -221,6 +242,13 @@ define ['angular'],
             itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid) }
             statusService.httpPost('/items', itemdata)
 
+          editItem: (item_id, item_num, category, donor, description, min_bid) ->
+            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid) }
+            statusService.httpPost('/items/' + item_id + '/edit', itemdata)
+
+          deleteItem: (item_id) ->
+            statusService.httpPost('/items/' + item_id + '/delete', {})
+
           setActiveItem: (id) ->
             filteredItems = dataService.itemsdata.filter( (itemdata) -> itemdata.item.id is id )
 
@@ -233,13 +261,39 @@ define ['angular'],
             @activeitem = undefined
     ]
 
-    mod.factory 'bidEntryService', ['statusService',
-      (statusService) ->
+    mod.factory 'bidEntryService', ['dataService', 'statusService',
+      (dataService, statusService) ->
         new class BidEntryService
+          constructor: ->
+            @activebid = undefined
+
+            updateActiveBid = () =>
+              if @activebid
+                @setActiveBid(@activebid.id)
+
+            dataService.setWinningBidUpdateCallback(updateActiveBid)
+
           addWinningBid: (itemid, bidder_id, amount) ->
             biddata = { bidderId: parseInt(bidder_id), amount: parseFloat(amount) }
             statusService.httpPost('/items/' + itemid + "/bid", biddata)
 
+          editWinningBid: (bid_id, item_id, bidder_id, amount) ->
+            biddata = { bidderId: parseInt(bidder_id), itemId: parseInt(item_id), amount: parseFloat(amount) }
+            statusService.httpPost('/items/' + bid_id + '/editbid', biddata)
+
           deleteWinningBid: (id) ->
             statusService.httpPost('/items/' + id + '/deletebid', {})
+
+          setActiveBid: (id) ->
+            filteredBids = dataService.winningbids.filter( (winningbid) -> winningbid.id is id )
+
+            if(filteredBids.length is 1)
+              @activebid = filteredBids[0]
+            else
+              @clearActiveBid()
+
+          clearActiveBid: ->
+            @activebid = undefined
     ]
+
+    mod

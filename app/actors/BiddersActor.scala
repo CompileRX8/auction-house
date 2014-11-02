@@ -16,6 +16,7 @@ object BiddersActor {
   case object GetBidders
   case class GetBidder(id: Long)
   case class DeleteBidder(id: Long)
+  case class EditBidder(bidder: Bidder)
 
   case class Payments(bidder: Bidder)
 
@@ -75,62 +76,69 @@ object BiddersPersistence {
     }
   }
 
-  def create(bidder: Bidder): Try[Bidder] = {
+  def create(bidder: Bidder): Try[Bidder] = Try {
     Util.db withSession {
       implicit session =>
-        Try {
-          val newBidderId = (biddersQuery returning biddersQuery.map(_.id)) += bidder
-          Bidder(Some(newBidderId), bidder.name)
-        }
+        val newBidderId = (biddersQuery returning biddersQuery.map(_.id)) += bidder
+        Bidder(Some(newBidderId), bidder.name)
     }
   }
 
-  def create(payment: Payment): Try[Payment] = {
+  def create(payment: Payment): Try[Payment] = Try {
     Util.db withSession {
       implicit session =>
-        Try {
-          val newPaymentId = (paymentsQuery returning paymentsQuery.map(_.id)) += PaymentRow.fromPayment(payment)
-          Payment(Some(newPaymentId), payment.bidder, payment.description, payment.amount)
-        }
+        val newPaymentId = (paymentsQuery returning paymentsQuery.map(_.id)) += PaymentRow.fromPayment(payment)
+        Payment(Some(newPaymentId), payment.bidder, payment.description, payment.amount)
     }
   }
   
-  def delete(bidder: Bidder): Try[Bidder] = {
+  def delete(bidder: Bidder): Try[Bidder] = Try {
     Util.db withSession {
       implicit session =>
-        if(biddersQuery.filter(_.id === bidder.id).delete == 1) {
-          Success(bidder)
+        if(biddersQuery.filter(_.id === bidder.id.get).delete == 1) {
+          bidder
         } else {
-          Failure(new BidderException(s"Unable to delete bidder with unique ID ${bidder.id}"))
+          throw new BidderException(s"Unable to delete bidder with unique ID ${bidder.id.get}")
         }
     }
   }
 
-  def paymentsByBidder(bidder: Bidder): Try[List[Payment]] = {
+  def edit(bidder: Bidder): Try[Bidder] = Try {
     Util.db withSession {
       implicit session =>
-        Try(paymentsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toPayment })
+        if(biddersQuery.filter(_.id === bidder.id.get).map(_.name).update(bidder.name) == 1) {
+          bidder
+        } else {
+          throw new BidderException(s"Unable to edit bidder with unique ID ${bidder.id.get}")
+        }
     }
   }
 
-  def bidderById(id: Long): Try[Option[Bidder]] = {
+  def paymentsByBidder(bidder: Bidder): Try[List[Payment]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(biddersQuery.filter(_.id === id).list.headOption.map { row => row.copy() })
+        paymentsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toPayment }
     }
   }
 
-  def bidderByName(name: String): Try[Option[Bidder]] = {
+  def bidderById(id: Long): Try[Option[Bidder]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(biddersQuery.filter(_.name === name).list.headOption.map { row => row.copy() })
+        biddersQuery.filter(_.id === id).list.headOption.map { row => row.copy() }
     }
   }
 
-  def sortedBidders: Try[List[Bidder]] = {
+  def bidderByName(name: String): Try[Option[Bidder]] = Try {
     Util.db withSession {
       implicit session =>
-        Try(biddersQuery.sortBy(_.name).list.map { row => row.copy() } )
+        biddersQuery.filter(_.name === name).list.headOption.map { row => row.copy() }
+    }
+  }
+
+  def sortedBidders: Try[List[Bidder]] = Try {
+    Util.db withSession {
+      implicit session =>
+        biddersQuery.sortBy(_.name).list.map { row => row.copy() }
     }
   }
 
@@ -184,6 +192,12 @@ class BiddersActor extends Actor {
         case None =>
           Failure(new BidderException(s"Cannot find bidder ID $id"))
       }
+
+    case EditBidder(bidder @ Bidder(idOpt @ Some(id), name)) =>
+      sender ! BiddersPersistence.edit(bidder)
+
+    case EditBidder(bidder @ Bidder(None, name)) =>
+      sender ! Failure(new BidderException(s"Cannot edit bidder without bidder ID"))
 
     case newPayment @ Payment(None, bidder, description, amount) =>
       sender ! findBidder(bidder).flatMap {

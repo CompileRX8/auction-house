@@ -40,6 +40,9 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
 
   def delete(id: Long) = wait { (itemsActor ? DeleteItem(id)).mapTo[Try[Item]] }
 
+  def edit(id: Long, itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
+    wait { (itemsActor ? EditItem(Item(Some(id), itemNumber, category, donor, description, minbid))).mapTo[Try[Item]] }
+
   def getWinningBid(id: Long) = wait { (itemsActor ? GetWinningBid(id)).mapTo[Try[Option[WinningBid]]] }
   def winningBids(item: Item) = wait { (itemsActor ? WinningBidsByItem(item)).mapTo[Try[List[WinningBid]]] }
   def winningBids(bidder: Bidder) = wait { (itemsActor ? WinningBidsByBidder(bidder)).mapTo[Try[List[WinningBid]]] }

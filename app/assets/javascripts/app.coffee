@@ -13,15 +13,15 @@ require [
         ($routeProvider) ->
           $routeProvider
             .when '/home',
-              { templateUrl: 'templates/home.html',            controller: 'HomeCtrl' }
+              { templateUrl: 'templates/home.html',            controller: 'HomeCtrl',      controllerAs: 'homeCtrl' }
             .when '/bidders',
-              { templateUrl: 'templates/bidders.html',         controller: 'BiddersCtrl' }
+              { templateUrl: 'templates/bidders.html',         controller: 'BiddersCtrl',   controllerAs: 'biddersCtrl' }
             .when '/items',
-              { templateUrl: 'templates/items.html',           controller: 'ItemsCtrl' }
+              { templateUrl: 'templates/items.html',           controller: 'ItemsCtrl',     controllerAs: 'itemsCtrl' }
             .when '/bidentry',
-              { templateUrl: 'templates/bidentry.html',        controller: 'BidEntryCtrl' }
+              { templateUrl: 'templates/bidentry.html',        controller: 'BidEntryCtrl',  controllerAs: 'bidEntryCtrl' }
             .when '/reconciliation',
-              { templateUrl: 'templates/reconciliation.html',  controller: 'ReconCtrl' }
+              { templateUrl: 'templates/reconciliation.html',  controller: 'ReconCtrl',     controllerAs: 'reconCtrl' }
             .otherwise { redirectTo: '/home' }
       ])
 

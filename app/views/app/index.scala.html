@@ -9,39 +9,40 @@
         <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
     </head>
     <body>
-        @*-- Navbar -- *@
-        <nav class="navbar navbar-inverse basics-nav" role="navigation" ng-controller="HeaderCtrl">
-            <div class="container-fluid">
-                <div class="navbar-header">
-                    <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar">
-                        <span class="sr-only">Toggle navigation</span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                        <span class="icon-bar"></span>
-                    </button>
-                    <a href="#/" class="navbar-brand">
-                        <img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" height="50" width="50" alt="MSFW logo" />
-                        MSFW Auction 2014
-                    </a>
+        <header id="main-header">
+            @*-- Navbar -- *@
+            <nav class="navbar navbar-inverse basics-nav" role="navigation" ng-controller="HeaderCtrl">
+                <div class="container-fluid">
+                    <div class="navbar-header">
+                        <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#main-navbar">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a href="#/" class="navbar-brand">
+                            <img src="@routes.Assets.at("images/msfw.png")" class="img-thumbnail" height="50" width="50" alt="MSFW logo" />
+                            MSFW Auction 2014
+                        </a>
+                    </div>
+                    <div class="collapse navbar-collapse" id="main-navbar">
+                        <ul class="nav navbar-nav">
+                            <li><a href="#/bidders">Bidders</a></li>
+                            <li><a href="#/items">Items</a></li>
+                            <li><a href="#/bidentry">Bid Entry</a></li>
+                            <li><a href="#/reconciliation">Reconciliation</a></li>
+                        </ul>
+                    </div>
                 </div>
-                <div class="collapse navbar-collapse" id="main-navbar">
-                    <ul class="nav navbar-nav">
-                        <li><a href="#/bidders">Bidders</a></li>
-                        <li><a href="#/items">Items</a></li>
-                        <li><a href="#/bidentry">Bid Entry</a></li>
-                        <li><a href="#/reconciliation">Reconciliation</a></li>
-                    </ul>
-                </div>
-            </div>
-        </nav>
+            </nav>
+        </header>
         @* -- Main Content -- *@
-        <main>
-            <div ng-view></div>
-        </main>
+        <section id="main-section" ng-view></section>
         @*-- Footer -- *@
-        <footer ng-controller="FooterCtrl" style="position: relative; bottom: 0;">
+        <footer id="main-footer" ng-controller="FooterCtrl">
             <div ng-class="statusService.message.status" role="alert">{{ statusService.message.text }}</div>
         </footer>
+        <script src="@routes.WebJarAssets.at(WebJarAssets.locate("jquery.min.js"))"></script>
         @Html(org.webjars.play.RequireJS.setup("javascripts/app.js"))
         <script src="@routes.WebJarAssets.at(WebJarAssets.locate("bootstrap.min.js"))"></script>
     </body>

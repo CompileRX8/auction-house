@@ -46,7 +46,7 @@ object ItemController extends Controller {
     }
   }
 
-  def deleteItem(itemId: Long) = Action { implicit request =>
+  def deleteItem(itemId: Long) = Action(parse.json) { implicit request =>
     Item.delete(itemId) match {
       case Success(item) =>
         AppController.pushItems()
@@ -56,6 +56,25 @@ object ItemController extends Controller {
         BadRequest(e.message)
       case Failure(e) =>
         logger.error("Unable to delete item", e)
+        BadRequest(e.getMessage)
+    }
+  }
+
+  def editItem(itemId: Long) = Action(parse.json) { implicit request =>
+    val itemNumber = (request.body \ "item_num").as[String]
+    val category = (request.body \ "category").as[String]
+    val donor = (request.body \ "donor").as[String]
+    val description = (request.body \ "description").as[String]
+    val minbid = (request.body \ "min_bid").as[BigDecimal]
+    Item.edit(itemId, itemNumber, category, donor, description, minbid) match {
+      case Success(item) =>
+        AppController.pushItems()
+        Ok(s"Edited item ${item.itemNumber} ${item.category} ${item.donor} ${item.description} $$ ${item.minbid}")
+      case Failure(e: ItemException) =>
+        logger.error("Unable to edit item", e)
+        BadRequest(e.message)
+      case Failure(e) =>
+        logger.error("Unable to edit item", e)
         BadRequest(e.getMessage)
     }
   }

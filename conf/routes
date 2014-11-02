@@ -8,10 +8,12 @@ GET         /                                     controllers.AppController.inde
 GET         /bidders                              controllers.BidderController.bidders
 POST        /bidders                              controllers.BidderController.newBidder
 POST        /bidders/:bidderId/delete             controllers.BidderController.deleteBidder(bidderId: Long)
+POST        /bidders/:bidderId/edit               controllers.BidderController.editBidder(bidderId: Long)
 
 GET         /items                                controllers.ItemController.items
 POST        /items                                controllers.ItemController.newItem
 POST        /items/:itemId/delete                 controllers.ItemController.deleteItem(itemId: Long)
+POST        /items/:itemId/edit                   controllers.ItemController.editItem(itemId: Long)
 POST        /items/:itemId/bid                    controllers.ItemController.addWinningBid(itemId: Long)
 POST        /items/:winningBidId/editbid          controllers.ItemController.editWinningBid(winningBidId: Long)
 POST        /items/:winningBidId/deletebid        controllers.ItemController.deleteWinningBid(winningBidId: Long)

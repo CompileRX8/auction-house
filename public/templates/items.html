@@ -1,29 +1,31 @@
-<h1 class="page-header">Items</h1>
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-sm-4 col-md-2">
-            <div class="row form-group">
-                <label for="searchterm" class="col-sm-6 col-md-4 control-label">Search</label>
-                <div class="col-sm-6 col-md-8">
-                    <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
-                </div>
+<section class="container-fluid">
+    <header>
+        <h1 class="page-header">Items</h1>
+    </header>
+    <div class="pagesearch">
+        <div class="row form-group">
+            <label class="col-sm-6 col-md-4 control-label">Search</label>
+            <div class="col-sm-6 col-md-8">
+                <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
             </div>
         </div>
-        <div class="col-sm-4 col-md-6 scrollable">
+    </div>
+    <div class="row">
+        <div class="col-sm-6 col-sm-offset-2">
             <table class="table table-hover table-condensed table-responsive">
                 <thead>
                 <tr>
-                    <th>Item Number</th>
-                    <th>Category</th>
-                    <th>Donor</th>
-                    <th>Description</th>
-                    <th class="text-right">Min Bid</th>
-                    <th class="text-right">Sold For</th>
+                    <th class="col-sm-1">Item Number</th>
+                    <th class="col-sm-2">Category</th>
+                    <th class="col-sm-2">Donor</th>
+                    <th class="col-sm-3">Description</th>
+                    <th class="text-right col-sm-2">Min Bid</th>
+                    <th class="text-right col-sm-2">Sold For</th>
                 </tr>
                 </thead>
                 <tbody>
                 <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy: item.itemNumber"
-                    ng-click="itemService.setActiveItem(itemdata.item.id)">
+                    ng-click="itemClicked(itemdata.item.id)">
                     <td>{{itemdata.item.itemNumber}}</td>
                     <td>{{itemdata.item.category}}</td>
                     <td>{{itemdata.item.donor}}</td>
@@ -32,63 +34,142 @@
                     <td class="text-right">{{dataService.winningBidsTotal(itemdata) | currency}}</td>
                 </tr>
                 </tbody>
+                <tfoot>
+                <form name="newitem" class="css-form" novalidate>
+                <tr>
+                    <td><input type="text" class="form-control" name="iItemNum" ng-model="item.item_num" placeholder="Item #" required></td>
+                    <td><input type="text" class="form-control" name="iCat" ng-model="item.category" placeholder="Category"></td>
+                    <td><input type="text" class="form-control" name="iDonor" ng-model="item.donor" placeholder="Donor"></td>
+                    <td><input type="text" class="form-control" name="iDesc" ng-model="item.description" placeholder="Description" required></td>
+                    <td class="input-group">
+                        <span class="input-group-addon">$</span>
+                        <input type="text" class="form-control text-right" name="iMinBid" ng-model="item.min_bid" placeholder="Min Bid" smart-float required>
+                    </td>
+                    <td class="text-right"><button class="btn btn-success" ng-click="addItem()" ng-disabled="newitem.$invalid">New Item</button></td>
+                </tr>
+                </form>
+                </tfoot>
             </table>
         </div>
-        <div class="col-sm-4 col-md-4 panel panel-default" ng-show="itemService.activeitem">
-            <div class="panel-heading row">
+    </div>
+    <div id="itemdetails" class="panel panel-default pagedetails" ng-show="itemService.activeitem">
+        <div class="panel-heading">
+            <div class="row">
                 <h1 class="panel-title col-sm-11"><strong>{{ itemService.activeitem.item.itemNumber }} {{ itemService.activeitem.item.description }}</strong></h1>
-                <button type="button" class="close pull-right text-right col-sm-1" ng-click="itemService.clearActiveItem()" ng-disabled="!itemService.activeitem">
+                <button type="button" class="close col-sm-1" ng-click="itemCleared()" ng-disabled="!itemService.activeitem">
                     <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
                 </button>
             </div>
-            <div class="panel-body">
-                <div class="row"><h4 class="col-sm-12">Winning Bidders</h4></div>
-                <table class="table table-condensed table-responsive">
-                    <thead>
-                    <tr>
-                        <th>Bidder ID</th>
-                        <th>Name</th>
-                        <th class="text-right">Bid Amount</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <tr ng-repeat="winningbid in itemService.activeitem.winningBids">
-                        <td>{{winningbid.bidder.id}}</td>
-                        <td>{{winningbid.bidder.name}}</td>
-                        <td class="text-right">{{winningbid.amount | currency}}</td>
-                    </tr>
-                    </tbody>
-                </table>
+        </div>
+        <div class="panel-body">
+            <div class="row"><h4 class="col-sm-12">Winning Bidders</h4></div>
+            <table class="table table-condensed table-responsive">
+                <thead>
+                <tr>
+                    <th>Bidder ID</th>
+                    <th>Name</th>
+                    <th class="text-right">Bid Amount</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr ng-repeat="winningbid in itemService.activeitem.winningBids">
+                    <td>{{winningbid.bidder.id}}</td>
+                    <td>{{winningbid.bidder.name}}</td>
+                    <td class="text-right">{{winningbid.amount | currency}}</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="panel-footer">
+            <div class="row">
+                <div class="col-sm-3 col-md-3">
+                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal">Edit Item</button>
+                </div>
+                <div class="col-sm-3 col-sm-offset-1 col-md-3 col-md-offset-1">
+                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal" ng-disabled="dataService.hasWinningBids(itemService.activeitem)">Delete Item</button>
+                </div>
             </div>
         </div>
     </div>
-    <form name="newitem" class="css-form" novalidate>
-    <div class="row">
-        <div class="panel panel-default col-sm-12">
-            <div class="panel-heading row">
-                <h1 class="panel-title col-sm-12"><strong>New Item</strong></h1>
-            </div>
-            <div class="panel-body row">
-                <div class="col-sm-2">
-                    <input type="text" class="form-control" name="iItemNum" ng-model="item.item_num" placeholder="Item Number" required>
+    <div class="modal fade" id="editModal" tabindex="-1" role="dialog" aria-labelledby="editModelLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    <h4 class="modal-title" id="editModalLabel">Edit Item</h4>
                 </div>
-                <div class="col-sm-2">
-                    <input type="text" class="form-control" name="iCat" ng-model="item.category" placeholder="Category">
+                <div class="modal-body">
+                    <div class="row">
+                        <form name="edititem" class="css-form" novalidate>
+                            <div class="col-sm-2 form-group">
+                                <label class="control-label">Item Number</label>
+                                <input type="text" class="form-control" id="eItemNum" name="eItemNum" ng-model="edititem.item_num" autofocus required>
+                            </div>
+                            <div class="col-sm-2 form-group">
+                                <label class="control-label">Category</label>
+                                <input type="text" class="form-control" id="eCat" name="eCat" ng-model="edititem.category">
+                            </div>
+                            <div class="col-sm-2 form-group">
+                                <label class="control-label">Donor</label>
+                                <input type="text" class="form-control" id="eDonor" name="eDonor" ng-model="edititem.donor">
+                            </div>
+                            <div class="col-sm-4 form-group">
+                                <label class="control-label">Description</label>
+                                <input type="text" class="form-control" id="eDesc" name="eDesc" ng-model="edititem.description" required>
+                            </div>
+                            <div class="col-sm-2 form-group">
+                                <label class="control-label">Min Bid</label>
+                                <div id="eMinBidIG" class="input-group">
+                                    <span class="input-group-addon">$</span>
+                                    <input type="text" class="form-control text-right" id="eMinBid" name="eMinBid" ng-model="edititem.min_bid" smart-float required>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
                 </div>
-                <div class="col-sm-2">
-                    <input type="text" class="form-control" name="iDonor" ng-model="item.donor" placeholder="Donor">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="editItem()" ng-disabled="edititem.$invalid">Edit Item</button>
                 </div>
-                <div class="col-sm-4">
-                    <input type="text" class="form-control" name="iDesc" ng-model="item.description" placeholder="Description" required>
-                </div>
-                <div class="col-sm-2">
-                    <input type="text" class="form-control" name="iMinBid" ng-model="item.min_bid" placeholder="Min Bid" smart-float required>
-                </div>
-            </div>
-            <div class="panel-footer">
-                <button class="btn btn-success" ng-click="addItem()" ng-disabled="newitem.$invalid">New Item</button>
             </div>
         </div>
     </div>
-    </form>
-</div>
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="deleteModelLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span aria-hidden="true">&times;</span><span class="sr-only">Close</span></button>
+                    <h4 class="modal-title" id="editModalLabel">Delete Item</h4>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Item Number</label>
+                            <p class="form-control-static">{{itemService.activeitem.item.itemNumber}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Category</label>
+                            <p class="form-control-static">{{itemService.activeitem.item.category}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Donor</label>
+                            <p class="form-control-static">{{itemService.activeitem.item.donor}}</p>
+                        </div>
+                        <div class="col-sm-4 form-group">
+                            <label class="control-label">Description</label>
+                            <p class="form-control-static">{{itemService.activeitem.item.description}}</p>
+                        </div>
+                        <div class="col-sm-2 form-group">
+                            <label class="control-label">Min Bid</label>
+                            <p class="form-control-static">{{itemService.activeitem.item.minbid | currency}}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" ng-click="deleteItem()" ng-disabled="dataService.hasWinningBids(itemService.activeitem)">Delete Item</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

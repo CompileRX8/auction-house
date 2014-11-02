@@ -1,8 +1,10 @@
-<h1 class="page-header">Home</h1>
-<div class="jumbotron">
-    <h1 style="text-align: center">{{ dataService.totalBids | currency }}</h1>
-</div>
-<div class="container-fluid">
+<section class="container-fluid">
+    <header>
+        <h1 class="page-header">Home</h1>
+    </header>
+    <div class="jumbotron">
+        <h1 style="text-align: center">{{ dataService.totalBids | currency }}</h1>
+    </div>
     <div class="row">
         <div class="col-md-2 text-right"><h2>Bidder ID</h2></div>
         <div class="col-md-2"><h2>Bidder Name</h2></div>
@@ -29,4 +31,4 @@
             <hr>
         </div>
     </marquee>
-</div>
+</section>
