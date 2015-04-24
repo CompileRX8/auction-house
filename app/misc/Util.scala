@@ -2,8 +2,8 @@ package misc
 
 import java.sql.{Timestamp, Time, Date}
 import java.util.Calendar
+import play.api.db.DB
 import play.api.Play.current
-import play.api.db.slick.DB
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 
@@ -34,13 +34,5 @@ object Util {
   val defaultAwaitTimeout = Duration(5, TimeUnit.SECONDS)
 
   def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
-
-  def db = {
-    if(System.getProperty("database") != null) {
-      DB(System.getProperty("database"))
-    } else {
-      DB
-    }
-  }
 
 }

@@ -1,24 +1,27 @@
-import com.typesafe.sbt.coffeescript.Import.CoffeeScriptKeys
-import com.typesafe.sbt.less.Import.LessKeys
-import com.typesafe.sbt.web.SbtWeb
+import sbt._
+import Keys._
+import play.Play.autoImport._
+import com.typesafe.sbt.coffeescript.SbtCoffeeScript.autoImport._
+import com.typesafe.sbt.less.SbtLess.autoImport._
+import com.typesafe.sbt.web.SbtWeb.autoImport._
 import play.PlayScala
+import com.typesafe.sbt.web.SbtWeb
 
 name := "AuctionHouse"
 
-version := "0.6-SNAPSHOT"
+version := "0.7-SNAPSHOT"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.11.5"
 
 libraryDependencies ++= Seq(
-  jdbc,
-  "org.webjars" %% "webjars-play" % "2.3.0",
-  "org.webjars" % "angularjs" % "1.2.25",
-  "org.webjars" % "bootstrap" % "3.2.0",
-  "com.typesafe.akka" %% "akka-testkit" % "2.3.4",
-  "com.typesafe.play" %% "play-slick" % "0.8.0",
-  "org.postgresql" % "postgresql" % "9.2-1004-jdbc4",
-  "org.specs2" %% "specs2" % "2.4.2" % "test",
-  "commons-codec" % "commons-codec" % "1.9"
+  jdbc
+  ,anorm
+  ,"com.typesafe.play" %% "play-slick" % "0.8.1"
+  ,"org.webjars" %% "webjars-play" % "2.3.0"
+  ,"org.webjars" % "angularjs" % "1.3.15"
+  ,"org.webjars" % "bootstrap" % "3.3.4"
+  ,"com.typesafe.akka" %% "akka-actor" % "2.3.9"
+//  ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
 )
 
 CoffeeScriptKeys.bare := true
