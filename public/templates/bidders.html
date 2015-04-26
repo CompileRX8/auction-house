@@ -22,7 +22,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="bidderdata in dataService.biddersdata | filter: searchterm | orderBy: bidder.id"
+                    <tr ng-repeat="bidderdata in dataService.biddersdata | bidderSearch: searchterm | orderBy: bidder.id"
                         ng-click="bidderClicked(bidderdata.bidder.id)">
                         <td class="text-right">{{ bidderdata.bidder.id }}</td>
                         <td>{{bidderdata.bidder.name}}</td>

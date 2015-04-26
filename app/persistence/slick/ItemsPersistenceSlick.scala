@@ -38,7 +38,7 @@ object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
     db withSession {
       implicit session =>
         val newItemId = (itemsQuery returning itemsQuery.map(_.id)) += item
-        Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid)
+        Item(Some(newItemId), item.itemNumber, item.category, item.donor, item.description, item.minbid, item.estvalue)
     }
   }
 

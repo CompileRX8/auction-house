@@ -54,7 +54,8 @@ trait SlickPersistence {
     def donor = column[String]("donor", O.NotNull)
     def description = column[String]("description", O.NotNull)
     def minbid = column[BigDecimal]("minbid", O.NotNull)
-    def * = (id.?, itemNumber, category, donor, description, minbid) <> ( Item.tupled, Item.unapply )
+    def estvalue = column[BigDecimal]("estvalue", O.NotNull)
+    def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( Item.tupled, Item.unapply )
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
   }

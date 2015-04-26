@@ -82,13 +82,13 @@ class ItemsActor extends Actor {
       val ds = itemStringList { _.donor }
       sender ! ds
 
-    case newItem @ Item(None, itemNumber, category, donor, description, minbid) =>
+    case newItem @ Item(None, itemNumber, category, donor, description, minbid, estvalue) =>
       sender ! findItem(itemNumber).flatMap {
         case Some(_) => Failure(new ItemException(s"Item number $itemNumber already exists"))
         case None => itemsPersistence.create(newItem)
       }
 
-    case item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid) =>
+    case item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid, estvalue) =>
       // Do nothing since not maintaining our own Set[ItemInfo] anymore
 
     case DeleteItem(id) =>
@@ -102,10 +102,10 @@ class ItemsActor extends Actor {
           Failure(new ItemException(s"Cannot find item ID $id"))
       }
 
-    case EditItem(item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid)) =>
+    case EditItem(item @ Item(idOpt @ Some(id), itemNumber, category, donor, description, minbid, estvalue)) =>
       sender ! itemsPersistence.edit(item)
 
-    case EditItem(item @ Item(None, _, _, _, _, _)) =>
+    case EditItem(item @ Item(None, _, _, _, _, _, _)) =>
       sender ! Failure(new ItemException(s"Cannot edit item without item ID"))
 
     case newWinningBid @ WinningBid(None, bidder, item, amount) =>

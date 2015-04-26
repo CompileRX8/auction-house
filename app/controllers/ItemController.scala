@@ -33,7 +33,8 @@ object ItemController extends Controller {
     val donor = (request.body \ "donor").as[String]
     val description = (request.body \ "description").as[String]
     val minbid = (request.body \ "min_bid").as[BigDecimal]
-    Item.create(itemNumber, category, donor, description, minbid) match {
+    val estvalue = (request.body \ "est_value").as[BigDecimal]
+    Item.create(itemNumber, category, donor, description, minbid, estvalue) match {
       case Success(item) =>
         AppController.pushItems()
         Ok(s"Created item ${item.itemNumber} ${item.description}")
@@ -66,7 +67,8 @@ object ItemController extends Controller {
     val donor = (request.body \ "donor").as[String]
     val description = (request.body \ "description").as[String]
     val minbid = (request.body \ "min_bid").as[BigDecimal]
-    Item.edit(itemId, itemNumber, category, donor, description, minbid) match {
+    val estvalue = (request.body \ "est_value").as[BigDecimal]
+    Item.edit(itemId, itemNumber, category, donor, description, minbid, estvalue) match {
       case Success(item) =>
         AppController.pushItems()
         Ok(s"Edited item ${item.itemNumber} ${item.category} ${item.donor} ${item.description} $$ ${item.minbid}")

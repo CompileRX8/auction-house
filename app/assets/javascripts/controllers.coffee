@@ -50,6 +50,15 @@ define ['angular'],
           $scope.bidderClicked($scope.bidderService.activebidder.bidder.id)
     ]
 
+    mod.filter 'bidderSearch',
+      () ->
+        (bidderData, searchterm) ->
+          if searchterm? and searchterm != ''
+            searchregex = new RegExp(searchterm, 'i')
+            (bidderDatum for bidderDatum in bidderData when bidderDatum.bidder.name.match(searchregex) or bidderDatum.bidder.id.toString() == searchterm)
+          else
+            bidderData
+
     mod.controller 'ItemsCtrl', ['$scope', 'itemService', 'dataService',
       ($scope, itemService, dataService) ->
         console.log "Created ItemsCtrl"

@@ -15,8 +15,8 @@ case class ItemException(message: String, cause: Exception = null) extends Excep
 
 case class ItemData(item: Item, winningBids: List[WinningBid])
 
-case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal)
-object Item extends ((Option[Long], String, String, String, String, BigDecimal) => Item) {
+case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal)
+object Item extends ((Option[Long], String, String, String, String, BigDecimal, BigDecimal) => Item) {
   implicit val timeout = Timeout(3 seconds)
 
   implicit val itemFormat = Json.format[Item]
@@ -35,13 +35,13 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal) 
 
   def get(id: Long) = wait { (itemsActor ? GetItem(id)).mapTo[Try[Option[Item]]] }
 
-  def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
-    wait { (itemsActor ? Item(None, itemNumber, category, donor, description, minbid)).mapTo[Try[Item]] }
+  def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal) =
+    wait { (itemsActor ? Item(None, itemNumber, category, donor, description, minbid, estvalue)).mapTo[Try[Item]] }
 
   def delete(id: Long) = wait { (itemsActor ? DeleteItem(id)).mapTo[Try[Item]] }
 
-  def edit(id: Long, itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal) =
-    wait { (itemsActor ? EditItem(Item(Some(id), itemNumber, category, donor, description, minbid))).mapTo[Try[Item]] }
+  def edit(id: Long, itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal) =
+    wait { (itemsActor ? EditItem(Item(Some(id), itemNumber, category, donor, description, minbid, estvalue))).mapTo[Try[Item]] }
 
   def getWinningBid(id: Long) = wait { (itemsActor ? GetWinningBid(id)).mapTo[Try[Option[WinningBid]]] }
   def winningBids(item: Item) = wait { (itemsActor ? WinningBidsByItem(item)).mapTo[Try[List[WinningBid]]] }
@@ -83,5 +83,10 @@ object WinningBid {
   def totalByBidder(bidder: Bidder): Try[BigDecimal] =
     allByBidder(bidder) flatMap { bidsList =>
       Try((BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount})
+    }
+
+  def totalEstValueByBidder(bidder: Bidder): Try[BigDecimal] =
+    allByBidder(bidder) flatMap { bidsList =>
+      Try((BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.item.estvalue})
     }
 }

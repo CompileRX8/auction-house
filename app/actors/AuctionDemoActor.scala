@@ -68,7 +68,7 @@ class AuctionDemoActor extends Actor with ActorLogging {
     case NewItem =>
       Items.nextItem() map { newItem =>
         log.debug("Adding item: {}", newItem)
-        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5) match {
+        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5, newItem._6) match {
           case Success(item) =>
             itemData = Item.currentItems().getOrElse(List())
             log.debug("Added item: {}  Item Data size: {}", item, itemData.size)
@@ -142,167 +142,167 @@ object Names {
 object Items {
   val rawItems =
     """
-      501,Basket,Basket - Chill Out,0
-      502,Basket,Doggie Basket,0
-      503,Basket,All About Music,0
-      504,Basket,Basket - Beers around the world,0
-      505,Basket,Ice Shaver,0
-      506,Basket,Basket of Books/Russian Doll,0
-      507,Basket,Fit Bit Basket,0
-      508,Basket,Spa Basket,0
-      509,Basket,4 Frilly neck scarves,0
-      510,Basket,Basket - Pool/Beach Theme,0
-      901,Dessert,Lemon Blueberry Layer Cake,0
-      903,Dessert,Cookies and Cream Cake,0
-      906,Dessert,Texas White Sheet Cake,0
-      905,Dessert,Upside Down Double Chocolate Jack Daniels Cheesecake,0
-      909,Dessert,Granny Anne's German Chocolate Cake,0
-      907,Dessert,Chocolate Chip Cookie Cheesecake,0
-      902,Dessert,Not Your Nana's Banana Pudding,0
-      904,Dessert,Gluten & Dairy Free Chocolate Oreo Cookie Bundt Cake,0
-      908,Dessert,The World's Best Strawberry Cake,0
-      101,Item-Apparel,24 Screen Print Tees,50
-      102,Item-Apparel,Bling hats,5
-      103,Item-Apparel,Embroidered ladies cross t-shirt,20
-      104,Item-Apparel,Handbag,10
-      105,Item-Apparel,Brown/white Frilly Scarf,5
-      106,Item-Apparel,FMHS Frilly scarf (blue/white),5
-      107,Item-Apparel,MHS Frilly Scarf (red/white),5
-      108,Item-Apparel,Teal frilly scarf,5
-      109,Item-Apparel,Knit Scarves (3),10
-      110,Item-Apparel,5 Thin loop Scarves,10
-      111,Item-Apparel,Hooded Baby Blanket,15
-      112,Item-Apparel,The Rusty Rabbit $25 Gift Certificate,10
-      113,Item-Food,Basket - New Mexico Wine and Pasta Dinner Value $110,10
-      114,Item-Food,Basket of homemade breads,5
-      115,Item-Food,Chocolate Indulgence Bouquet Value $49,15
-      116,Item-Food,Basket - family movie night Value $100,15
-      117,Item-Food,Basket - wine and such,15
-      118,Item-Food,Basket - all things chocolate,20
-      119.1,Item-Food,Homemade Salsa (28oz jar),10
-      119.2,Item-Food,Homemade Salsa (28oz jar),10
-      119.3,Item-Food,Homemade Salsa (28oz jar),10
-      120,Item-Food,Nothing Bundt Cakes 1 10" Decorated Cake $40 Value,10
-      121,Item-Home,Print of original watercolor "Communion II",30
-      122,Item-Home,Decorative Window,20
-      123,Item-Home,Easter Basket Flower Arrangement,5
-      124,Item-Home,Kinkade framed prints,40
-      125,Item-Home,Kinkade framed prints,40
-      126,Item-Home,Spring Floral Arrangement,5
-      127,Item-Home,Golf scentsy warmer,5
-      128,Item-Home,Sewing Machine Singer Model 2662,50
-      129,Item-Home,Roku,35
-      130,Item-Home,Pair of Bunnies,15
-      131,Item-Home,Pair of Lambs,5
-      132,Item-Home,Pie Rack,15
-      133,Item-Home,Flower arrangement -Fall,10
-      134,Item-Home,Flower arrangement -Hanging,5
-      135,Item-Home,Chairs(2),30
-      136,Item-Home,Vase,10
-      137,Item-Jewelry,$20 Gift Card & Silver Charm Bracelet,15
-      138,Item-Jewelry,Bracelet,5
-      139,Item-Jewelry,Travel jewelry keeper,5
-      140,Item-Jewelry,Charm Neclace,10
-      141,Item-Jewelry,Gear Earrings,8
-      142,Item-Jewelry,Jewelry Set,20
-      143,Item-Misc,Receiver,30
-      144,Item-Misc,City Florist Gift Card Value $25,10
-      145,Item-Misc,Large Cross -Red,10
-      146,Item-Misc,Large Cross -Teal,10
-      147,Item-Misc,Small Cross -Blue,10
-      148,Item-Misc,Small Cross -Teal,10
-      149,Item-Misc,Head of the Line Plate,10
-      150,Item-Misc,Lance Berkman autographed baseball,15
-      151,Item-Misc,Homemade Zentangle note card (10),5
-      152,Item-Misc,Kimball Museum Art Lovers Basket Value over $80,10
-      153,Item-Misc,Piano($300.00 +fees),300
-      154,Item-Misc,TCU items,25
-      155,Item-Misc,American Girl Doll Clothes,10
-      156,Item-Outdoor,Japanese Maple Tree,10
-      157,Item-Outdoor,Stepping stone,8
-      158,Item-Outdoor,Planter,20
-      159,Item-Outdoor,Turtle,10
-      160,Item-Outdoor,Mexican boot planter Value $60,10
-      161,Item-Personal Care,Sonicare Toothbrush $80,20
-      162,Item-Personal Care,MK gift certificate Value $125,30
-      163,Item-Personal Care,Luke 's Locker $25 Gift Card,10
-      164,Item-Personal Care,Luke 's Locker $25 Gift Card,10
-      165,Item-Personal Care,Luke 's Locker $25 Gift Card,10
-      166,Item-Personal Care,Family Physician Kit,20
-      167,Item-Personal Care,Introduction to essential oils kit,5
-      168,Item-Personal Care,Arbonne bath gel body lotion scrub,15
-      201,Outing,Adventure Landing (Coit Rd in Dallas) 4 free games of miniature golf,10
-      202,Outing,Adventure Landing (Coit Rd in Dallas) 4 free games of miniature golf,10
-      203,Outing,AT & T Performing Arts Center 2 tickets and self -parking pass to Beauty & the Beast 4 / 15 / 14@8 pm,20
-      204,Outing,Two Rangers tickets for April 12,35
-      205,Outing,Dallas Summer Musicals Admission for 4 to Mamma Mia !6 / 3 / 14 Value $320,100
-      206,Outing,Dallas Zoo 2 Adult & 2 Youth Tickets Value $54,10
-      207,Outing,Excite Mini Party (1 hour for 15 children),50
-      208.1,Outing,Dinner on the Patio,20
-      208.2,Outing,Dinner on the Patio,20
-      208.3,Outing,Dinner on the Patio,20
-      209,Outing,FW Museum of Science & Industry 2 Free passes to Museum and Noble Planetarium,10
-      210,Outing,FW Zoo Admission for 2 Value up to $24,10
-      211,Outing,George Bush National Library 2 Free Passes Value $32,10
-      212,Outing,Ice-Skating Center Ice Skating Lessons $84,10
-      213,Outing,Institute of Texan Cultures Free General Admission for Family of 4 Value $32,5
-      214.1,Outing,Steak dinner for 2,20
-      214.2,Outing,Steak dinner for 2,20
-      214.3,Outing,Steak dinner for 2,20
-      215,Outing,Modern Art Museum of Fort Worth 2 Free Admission $40 Value,10
-      216,Outing,Cosmic Jump 2-hour passes (4),10
-      217,Outing,NRH2O Two 1 -day passes Value $50,10
-      218.1,Outing,Morning fishing trip to Ray Roberts plus lunch,20
-      218.2,Outing,Morning fishing trip to Ray Roberts plus lunch,20
-      219,Outing,Rockin 'R' River Rides Raft or Toob Trip for 4 Adults Value $140,50
-      220,Outing,Scarborough Fair Admission for 2 Adults & 2 Youth Value $68,10
-      221,Outing,Texas Rangers Baseball 2 Upper Reserved Tickets,10
-      222,Outing,5 course dinner for six with wine / beer pairing,40
-      223,Outing,Dallas Symphony Orchestra 2 tickets to choice of TI Classical Series,40
-      301,Restaurant,Bahama Bucks $30 Gift Pack,10
-      302,Restaurant,Bahama Bucks $30 Gift Pack,10
-      303,Restaurant,Bahama Bucks $30 Gift Pack,10
-      304,Restaurant,Baskin Robbins Two Family 4 Pack Coupons,5
-      305,Restaurant,Baskin Robbins Two Family 4 Pack Coupons,5
-      306,Restaurant,Big Fish Grill & Bar $25 Gift Certicate,10
-      307,Restaurant,Cold Stone Creamery $15 Gift Card,5
-      308,Restaurant,Cotton Patch Dinner for 2 Value $22,10
-      309,Restaurant,Firehouse Subs (5) $10 Gift Cards,10
-      310,Restaurant,Patrizio $50 Gift Certificate,15
-      311,Restaurant,Potbelly Sandwich Shop 5 Free Sandwiches,10
-      312,Restaurant,Potbelly Sandwich Shop 5 Free Sandwiches,10
-      313,Restaurant,Rockfish $20 Gift Cards,10
-      314,Restaurant,Rockfish $20 Gift Cards,10
-      401,Service,College Shirt Challenge,5
-      402,Service,Three Course Italian Dinner,20
-      404,Service,Bluebonnet Fences 1 - Free Post Replacement Value $100,50
-      403,Service,Bluebonnet Fences 1 - Free gate with purchase of new fence Value $100,50
-      405,Service,Elite Strength & Conditioning $100 Voucher toward any session or camp,30
-      406,Service,Foster Chiropractic $100 Gift Certificate,30
-      407,Service,4 hours of Handyman,20
-      408,Service,Family Photo Session,30
-      409,Service,DVD slide show creation,30
-      410,Service,Messina Shoe Repair $40 Gift Certificate,15
-      411,Service,Romantic Dinner for Two,20
-      413,Service-Child,Big Sister for the Day,10
-      414,Service-Child,12 hours of child care,10
-      415,Service-Child,Big Brothers for the Day,10
-      416,Service-Child,5 hours of child care,10
-      417,Service-Child,Big Sister for the Day,10
-      701,Guess Jar,Visa Gift card,10
-      702,Treasure Chest,Treasure chest AMC card and Blue Goose card,0
+      501,Basket,Basket - Chill Out,0,0
+      502,Basket,Doggie Basket,0,0
+      503,Basket,All About Music,0,0
+      504,Basket,Basket - Beers around the world,0,0
+      505,Basket,Ice Shaver,0,0
+      506,Basket,Basket of Books/Russian Doll,0,0
+      507,Basket,Fit Bit Basket,0,0
+      508,Basket,Spa Basket,0,0
+      509,Basket,4 Frilly neck scarves,0,0
+      510,Basket,Basket - Pool/Beach Theme,0,0
+      901,Dessert,Lemon Blueberry Layer Cake,0,0
+      903,Dessert,Cookies and Cream Cake,0,0
+      906,Dessert,Texas White Sheet Cake,0,0
+      905,Dessert,Upside Down Double Chocolate Jack Daniels Cheesecake,0,0
+      909,Dessert,Granny Anne's German Chocolate Cake,0,0
+      907,Dessert,Chocolate Chip Cookie Cheesecake,0,0
+      902,Dessert,Not Your Nana's Banana Pudding,0,0
+      904,Dessert,Gluten & Dairy Free Chocolate Oreo Cookie Bundt Cake,0,0
+      908,Dessert,The World's Best Strawberry Cake,0,0
+      101,Item-Apparel,24 Screen Print Tees,50,0
+      102,Item-Apparel,Bling hats,5,0
+      103,Item-Apparel,Embroidered ladies cross t-shirt,20,0
+      104,Item-Apparel,Handbag,10,0
+      105,Item-Apparel,Brown/white Frilly Scarf,5,0
+      106,Item-Apparel,FMHS Frilly scarf (blue/white),5,0
+      107,Item-Apparel,MHS Frilly Scarf (red/white),5,0
+      108,Item-Apparel,Teal frilly scarf,5,0
+      109,Item-Apparel,Knit Scarves (3),10,0
+      110,Item-Apparel,5 Thin loop Scarves,10,0
+      111,Item-Apparel,Hooded Baby Blanket,15,0
+      112,Item-Apparel,The Rusty Rabbit $25 Gift Certificate,10,0
+      113,Item-Food,Basket - New Mexico Wine and Pasta Dinner Value $110,10,0
+      114,Item-Food,Basket of homemade breads,5,0
+      115,Item-Food,Chocolate Indulgence Bouquet Value $49,15,0
+      116,Item-Food,Basket - family movie night Value $100,15,0
+      117,Item-Food,Basket - wine and such,15,0
+      118,Item-Food,Basket - all things chocolate,20,0
+      119.1,Item-Food,Homemade Salsa (28oz jar),10,0
+      119.2,Item-Food,Homemade Salsa (28oz jar),10,0
+      119.3,Item-Food,Homemade Salsa (28oz jar),10,0
+      120,Item-Food,Nothing Bundt Cakes 1 10" Decorated Cake $40 Value,10,0
+      121,Item-Home,Print of original watercolor "Communion II",30,0
+      122,Item-Home,Decorative Window,20,0
+      123,Item-Home,Easter Basket Flower Arrangement,5,0
+      124,Item-Home,Kinkade framed prints,40,0
+      125,Item-Home,Kinkade framed prints,40,0
+      126,Item-Home,Spring Floral Arrangement,5,0
+      127,Item-Home,Golf scentsy warmer,5,0
+      128,Item-Home,Sewing Machine Singer Model 2662,50,0
+      129,Item-Home,Roku,35,0
+      130,Item-Home,Pair of Bunnies,15,0
+      131,Item-Home,Pair of Lambs,5,0
+      132,Item-Home,Pie Rack,15,0
+      133,Item-Home,Flower arrangement -Fall,10,0
+      134,Item-Home,Flower arrangement -Hanging,5,0
+      135,Item-Home,Chairs(2),30,0
+      136,Item-Home,Vase,10,0
+      137,Item-Jewelry,$20 Gift Card & Silver Charm Bracelet,15,0
+      138,Item-Jewelry,Bracelet,5,0
+      139,Item-Jewelry,Travel jewelry keeper,5,0
+      140,Item-Jewelry,Charm Neclace,10,0
+      141,Item-Jewelry,Gear Earrings,8,0
+      142,Item-Jewelry,Jewelry Set,20,0
+      143,Item-Misc,Receiver,30,0
+      144,Item-Misc,City Florist Gift Card Value $25,10,0
+      145,Item-Misc,Large Cross -Red,10,0
+      146,Item-Misc,Large Cross -Teal,10,0
+      147,Item-Misc,Small Cross -Blue,10,0
+      148,Item-Misc,Small Cross -Teal,10,0
+      149,Item-Misc,Head of the Line Plate,10,0
+      150,Item-Misc,Lance Berkman autographed baseball,15,0
+      151,Item-Misc,Homemade Zentangle note card (10),5,0
+      152,Item-Misc,Kimball Museum Art Lovers Basket Value over $80,10,0
+      153,Item-Misc,Piano($300.00 +fees),300,0
+      154,Item-Misc,TCU items,25,0
+      155,Item-Misc,American Girl Doll Clothes,10,0
+      156,Item-Outdoor,Japanese Maple Tree,10,0
+      157,Item-Outdoor,Stepping stone,8,0
+      158,Item-Outdoor,Planter,20,0
+      159,Item-Outdoor,Turtle,10,0
+      160,Item-Outdoor,Mexican boot planter Value $60,10,0
+      161,Item-Personal Care,Sonicare Toothbrush $80,20,0
+      162,Item-Personal Care,MK gift certificate Value $125,30,0
+      163,Item-Personal Care,Luke 's Locker $25 Gift Card,10,0
+      164,Item-Personal Care,Luke 's Locker $25 Gift Card,10,0
+      165,Item-Personal Care,Luke 's Locker $25 Gift Card,10,0
+      166,Item-Personal Care,Family Physician Kit,20,0
+      167,Item-Personal Care,Introduction to essential oils kit,5,0
+      168,Item-Personal Care,Arbonne bath gel body lotion scrub,15,0
+      201,Outing,Adventure Landing (Coit Rd in Dallas) 4 free games of miniature golf,10,0
+      202,Outing,Adventure Landing (Coit Rd in Dallas) 4 free games of miniature golf,10,0
+      203,Outing,AT & T Performing Arts Center 2 tickets and self -parking pass to Beauty & the Beast 4 / 15 / 14@8 pm,20,0
+      204,Outing,Two Rangers tickets for April 12,35,0
+      205,Outing,Dallas Summer Musicals Admission for 4 to Mamma Mia !6 / 3 / 14 Value $320,100,0
+      206,Outing,Dallas Zoo 2 Adult & 2 Youth Tickets Value $54,10,0
+      207,Outing,Excite Mini Party (1 hour for 15 children),50,0
+      208.1,Outing,Dinner on the Patio,20,0
+      208.2,Outing,Dinner on the Patio,20,0
+      208.3,Outing,Dinner on the Patio,20,0
+      209,Outing,FW Museum of Science & Industry 2 Free passes to Museum and Noble Planetarium,10,0
+      210,Outing,FW Zoo Admission for 2 Value up to $24,10,0
+      211,Outing,George Bush National Library 2 Free Passes Value $32,10,0
+      212,Outing,Ice-Skating Center Ice Skating Lessons $84,10,0
+      213,Outing,Institute of Texan Cultures Free General Admission for Family of 4 Value $32,5,0
+      214.1,Outing,Steak dinner for 2,20,0
+      214.2,Outing,Steak dinner for 2,20,0
+      214.3,Outing,Steak dinner for 2,20,0
+      215,Outing,Modern Art Museum of Fort Worth 2 Free Admission $40 Value,10,0
+      216,Outing,Cosmic Jump 2-hour passes (4),10,0
+      217,Outing,NRH2O Two 1 -day passes Value $50,10,0
+      218.1,Outing,Morning fishing trip to Ray Roberts plus lunch,20,0
+      218.2,Outing,Morning fishing trip to Ray Roberts plus lunch,20,0
+      219,Outing,Rockin 'R' River Rides Raft or Toob Trip for 4 Adults Value $140,50,0
+      220,Outing,Scarborough Fair Admission for 2 Adults & 2 Youth Value $68,10,0
+      221,Outing,Texas Rangers Baseball 2 Upper Reserved Tickets,10,0
+      222,Outing,5 course dinner for six with wine / beer pairing,40,0
+      223,Outing,Dallas Symphony Orchestra 2 tickets to choice of TI Classical Series,40,0
+      301,Restaurant,Bahama Bucks $30 Gift Pack,10,0
+      302,Restaurant,Bahama Bucks $30 Gift Pack,10,0
+      303,Restaurant,Bahama Bucks $30 Gift Pack,10,0
+      304,Restaurant,Baskin Robbins Two Family 4 Pack Coupons,5,0
+      305,Restaurant,Baskin Robbins Two Family 4 Pack Coupons,5,0
+      306,Restaurant,Big Fish Grill & Bar $25 Gift Certicate,10,0
+      307,Restaurant,Cold Stone Creamery $15 Gift Card,5,0
+      308,Restaurant,Cotton Patch Dinner for 2 Value $22,10,0
+      309,Restaurant,Firehouse Subs (5) $10 Gift Cards,10,0
+      310,Restaurant,Patrizio $50 Gift Certificate,15,0
+      311,Restaurant,Potbelly Sandwich Shop 5 Free Sandwiches,10,0
+      312,Restaurant,Potbelly Sandwich Shop 5 Free Sandwiches,10,0
+      313,Restaurant,Rockfish $20 Gift Cards,10,0
+      314,Restaurant,Rockfish $20 Gift Cards,10,0
+      401,Service,College Shirt Challenge,5,0
+      402,Service,Three Course Italian Dinner,20,0
+      404,Service,Bluebonnet Fences 1 - Free Post Replacement Value $100,50,0
+      403,Service,Bluebonnet Fences 1 - Free gate with purchase of new fence Value $100,50,0
+      405,Service,Elite Strength & Conditioning $100 Voucher toward any session or camp,30,0
+      406,Service,Foster Chiropractic $100 Gift Certificate,30,0
+      407,Service,4 hours of Handyman,20,0
+      408,Service,Family Photo Session,30,0
+      409,Service,DVD slide show creation,30,0
+      410,Service,Messina Shoe Repair $40 Gift Certificate,15,0
+      411,Service,Romantic Dinner for Two,20,0
+      413,Service-Child,Big Sister for the Day,10,0
+      414,Service-Child,12 hours of child care,10,0
+      415,Service-Child,Big Brothers for the Day,10,0
+      416,Service-Child,5 hours of child care,10,0
+      417,Service-Child,Big Sister for the Day,10,0
+      701,Guess Jar,Visa Gift card,10,0
+      702,Treasure Chest,Treasure chest AMC card and Blue Goose card,0,0
     """.stripMargin
 
-  val itemLineRegex = """^\s*([^,]+),([^,]+),([^,]+),(\d+)$""".r("itemNum", "category", "description", "minBid")
+  val itemLineRegex = """^\s*([^,]+),([^,]+),([^,]+),(\d+),(\d+)$""".r("itemNum", "category", "description", "minBid", "estValue")
 
   val itemData = for {
     (itemLine, bidderName) <- rawItems.split("\n").zip(Names.names)
-    itemLineRegex(itemNum, category, description, minBid) <- itemLineRegex findFirstIn itemLine
-  } yield (itemNum, category, bidderName, description, BigDecimal(minBid))
+    itemLineRegex(itemNum, category, description, minBid, estValue) <- itemLineRegex findFirstIn itemLine
+  } yield (itemNum, category, bidderName, description, BigDecimal(minBid), BigDecimal(estValue))
 
   private val nextItemIndex = Range(0, itemData.length).toIterator
 
-  def nextItem(): Option[(String, String, String, String, BigDecimal)] = {
+  def nextItem(): Option[(String, String, String, String, BigDecimal, BigDecimal)] = {
     if(nextItemIndex.hasNext)
       Some(itemData(nextItemIndex.next()))
     else
