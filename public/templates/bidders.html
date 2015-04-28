@@ -2,122 +2,133 @@
     <header>
         <h1 class="page-header">Bidders</h1>
     </header>
-    <div class="pagesearch">
-        <div class="row form-group">
-            <label class="col-sm-6 col-md-4 control-label">Search</label>
-            <div class="col-sm-6 col-md-8">
-                <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
-            </div>
-        </div>
-    </div>
     <div class="row">
-        <div class="col-sm-3 col-sm-offset-2">
-            <table class="table table-condensed table-hover table-responsive">
-                <thead>
+        <div class="col-md-5 col-sm-4">
+            <div id="biddersearch" class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="row form-group">
+                        <label class="col-sm-4 col-md-3 control-label">Search</label>
+                        <div class="col-sm-8 col-md-9">
+                            <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
+                        </div>
+                    </div>
+                </div>
+               <table class="table table-condensed table-hover scrollable">
+                    <thead>
                     <tr>
                         <th>Bidder ID</th>
                         <th>Name</th>
                         <th class="text-right">Winning Bids</th>
                         <th class="text-right">Payments</th>
                     </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="bidderdata in dataService.biddersdata | bidderSearch: searchterm | orderBy: bidder.id"
+                    </thead>
+                    <tbody>
+                    <tr ng-repeat="bidderdata in dataService.biddersdata | bidderSearch: searchterm | orderBy:'bidder.id'"
                         ng-click="bidderClicked(bidderdata.bidder.id)">
                         <td class="text-right">{{ bidderdata.bidder.id }}</td>
                         <td>{{bidderdata.bidder.name}}</td>
                         <td class="text-right">{{ dataService.winningBidsTotal(bidderdata) | currency }}</td>
                         <td class="text-right">{{ dataService.paymentTotal(bidderdata) | currency }}</td>
                     </tr>
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td></td>
-                        <td colspan="2"><input type="text" id="biddername" class="form-control" ng-model="bidder_name" placeholder="Bidder Name"></td>
-                        <td><button class="btn btn-success" ng-click="addBidder()" ng-disabled="bidder_name == ''">Add Bidder</button></td>
-                    </tr>
-                </tfoot>
-            </table>
-        </div>
-    </div>
-    <div id="bidderdetails" class="pagedetails panel panel-default" ng-show="bidderService.activebidder">
-        <div class="panel-heading">
-            <div class="row">
-                <h1 class="panel-title col-sm-11"><strong>{{ bidderService.activebidder.bidder.id }} {{ bidderService.activebidder.bidder.name }}</strong></h1>
-                <button type="button" class="close col-sm-1" ng-click="bidderCleared()" ng-disabled="!bidderService.activebidder">
-                    <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
-                </button>
+                    </tbody>
+                </table>
+                <div class="panel-footer">
+                    <div class="row form-group">
+                        <div class="col-md-7">
+                            <input type="text" id="biddername" class="form-control" ng-model="bidder_name" placeholder="Bidder Name">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-success" ng-click="addBidder()" ng-disabled="bidder_name == ''">Add Bidder</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="panel-body">
-            <form name="newpayment" class="css-form" novalidate>
-                <table class="table table-condensed table-responsive">
-                    <tr>
-                        <td colspan="6"><h4>Winning Bids</h4></td>
-                    </tr>
-                    <tr>
-                        <th class="col-sm-1">Item Number</th>
-                        <th class="col-sm-2 text-right">Bid Amount</th>
-                        <th class="col-sm-3">Description</th>
-                        <th class="col-sm-2 text-right">Min Bid</th>
-                        <th class="col-sm-2">Category</th>
-                        <th class="col-sm-2">Donor</th>
-                    </tr>
-                    <tr ng-repeat="winningbid in bidderService.activebidder.winningBids">
-                        <td>{{winningbid.item.itemNumber}}</td>
-                        <td class="text-right">{{winningbid.amount | currency}}</td>
-                        <td>{{winningbid.item.description}}</td>
-                        <td class="text-right">{{winningbid.item.minbid | currency}}</td>
-                        <td>{{winningbid.item.category}}</td>
-                        <td>{{winningbid.item.donor}}</td>
-                    </tr>
-                    <tr ng-class="dataService.totalsStyle(bidderService.activebidder)">
-                        <th>Total:</th>
-                        <th class="text-right">{{ dataService.winningBidsTotal(bidderService.activebidder) | currency }}</th>
-                        <th colspan="4"></th>
-                    </tr>
-                    <tr>
-                        <td colspan="6"><h4>Payments</h4></td>
-                    </tr>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th class="text-right">Amount</th>
-                        <th colspan="2">Description</th>
-                        <th colspan="2">&nbsp;</th>
-                    </tr>
-                    <tr ng-repeat="payment in bidderService.activebidder.payments">
-                        <td>&nbsp;</td>
-                        <td class="text-right">{{ payment.amount | currency }}</td>
-                        <td colspan="2">{{ payment.description }}</td>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td colspan="2">
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-addon">$</span>
-                                <input type="text" class="form-control text-right" name="pAmt" ng-model="payment.amount" placeholder="Amount" smart-float required>
-                            </div>
-                        </td>
-                        <td colspan="2"><input type="text" class="form-control" name="pDesc" ng-model="payment.description" placeholder="Description" required></td>
-                        <td><button class="btn btn-success" ng-click="addPayment()" ng-disabled="newpayment.$invalid">Add Payment</button></td>
-                    </tr>
-                    <tr ng-class="dataService.totalsStyle(bidderService.activebidder)">
-                        <th>Total:</th>
-                        <th class="text-right">{{ dataService.paymentTotal(bidderService.activebidder) | currency }}</th>
-                        <th>( Owes: {{ dataService.winningBidsTotal(bidderService.activebidder) - dataService.paymentTotal(bidderService.activebidder) | currency }} )</th>
-                        <th colspan="3">&nbsp;</th>
-                    </tr>
-                </table>
-            </form>
-        </div>
-        <div class="panel-footer">
-            <div class="row">
-                <div class="col-sm-3 col-md-3">
-                    <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal">Edit Bidder</button>
+        <div class="col-md-7 col-sm-8">
+            <div class="panel panel-default" ng-show="bidderService.activebidder">
+                <div class="panel-heading">
+                    <div class="row">
+                        <h1 class="panel-title col-sm-11"><strong>{{ bidderService.activebidder.bidder.id }} {{ bidderService.activebidder.bidder.name }}</strong></h1>
+                        <button type="button" class="close col-sm-1" ng-click="bidderCleared()" ng-disabled="!bidderService.activebidder">
+                            <span aria-hidden="true">&times;</span><span class="sr-only">Close</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="col-sm-3 col-sm-offset-1 col-md-3 col-md-offset-1">
-                    <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal" ng-disabled="dataService.hasWinningBids(bidderService.activebidder) || dataService.hasPayments(bidderService.activebidder)">Delete Bidder</button>
+                <div class="panel-body">
+                    <form name="newpayment" class="css-form" novalidate>
+                        <table class="table table-condensed table-responsive">
+                            <tr>
+                                <td colspan="6"><h4>Winning Bids</h4></td>
+                            </tr>
+                            <tr>
+                                <th class="col-sm-1">Item Number</th>
+                                <th class="col-sm-2 text-right">Bid Amount</th>
+                                <th class="col-sm-3">Description</th>
+                                <th class="col-sm-1 text-right">Min Bid</th>
+                                <th class="col-sm-1 text-right">Est. Value</th>
+                                <th class="col-sm-2">Category</th>
+                                <th class="col-sm-2">Donor</th>
+                            </tr>
+                            <tr ng-repeat="winningbid in bidderService.activebidder.winningBids">
+                                <td>{{winningbid.item.itemNumber}}</td>
+                                <td class="text-right">{{winningbid.amount | currency}}</td>
+                                <td>{{winningbid.item.description}}</td>
+                                <td class="text-right">{{winningbid.item.minbid | currency}}</td>
+                                <td class="text-right">{{winningbid.item.estvalue | currency}}</td>
+                                <td>{{winningbid.item.category}}</td>
+                                <td>{{winningbid.item.donor}}</td>
+                            </tr>
+                            <tr ng-class="dataService.totalsStyle(bidderService.activebidder)">
+                                <th>Total:</th>
+                                <th class="text-right">{{ dataService.winningBidsTotal(bidderService.activebidder) | currency }}</th>
+                                <th colspan="2"></th>
+                                <th class="text-right">{{ dataService.estValueTotal(bidderService.activebidder) | currency }}</th>
+                                <th colspan="2"></th>
+                            </tr>
+                            <tr>
+                                <td colspan="6"><h4>Payments</h4></td>
+                            </tr>
+                            <tr>
+                                <th>&nbsp;</th>
+                                <th class="text-right">Amount</th>
+                                <th colspan="2">Description</th>
+                                <th colspan="2">&nbsp;</th>
+                            </tr>
+                            <tr ng-repeat="payment in bidderService.activebidder.payments">
+                                <td>&nbsp;</td>
+                                <td class="text-right">{{ payment.amount | currency }}</td>
+                                <td colspan="2">{{ payment.description }}</td>
+                                <td colspan="2">&nbsp;</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td colspan="2">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-addon">$</span>
+                                        <input type="text" class="form-control text-right" name="pAmt" ng-model="payment.amount" placeholder="Amount" smart-float required>
+                                    </div>
+                                </td>
+                                <td colspan="2"><input type="text" class="form-control" name="pDesc" ng-model="payment.description" placeholder="Description" required></td>
+                                <td><button class="btn btn-success" ng-click="addPayment()" ng-disabled="newpayment.$invalid">Add Payment</button></td>
+                            </tr>
+                            <tr ng-class="dataService.totalsStyle(bidderService.activebidder)">
+                                <th>Total:</th>
+                                <th class="text-right">{{ dataService.paymentTotal(bidderService.activebidder) | currency }}</th>
+                                <th>( Owes: {{ dataService.winningBidsTotal(bidderService.activebidder) - dataService.paymentTotal(bidderService.activebidder) | currency }} )</th>
+                                <th colspan="3">&nbsp;</th>
+                            </tr>
+                        </table>
+                    </form>
+                </div>
+                <div class="panel-footer">
+                    <div class="row">
+                        <div class="col-sm-3 col-md-3">
+                            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#editModal">Edit Bidder</button>
+                        </div>
+                        <div class="col-sm-3 col-sm-offset-1 col-md-3 col-md-offset-1">
+                            <button type="button" class="btn btn-danger" data-toggle="modal" data-target="#deleteModal" ng-disabled="dataService.hasWinningBids(bidderService.activebidder) || dataService.hasPayments(bidderService.activebidder)">Delete Bidder</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -71,13 +71,13 @@ define ['angular'],
         $scope.addItem = ->
           category = $scope.item.category or ''
           donor = $scope.item.donor or ''
-          itemService.addItem($scope.item.item_num, category, donor, $scope.item.description, $scope.item.min_bid)
+          itemService.addItem($scope.item.item_num, category, donor, $scope.item.description, $scope.item.min_bid, $scope.item.est_value)
           $scope.item = {}
 
         $scope.editItem = ->
           category = $scope.edititem.category or ''
           donor = $scope.edititem.donor or ''
-          itemService.editItem(itemService.activeitem.item.id, $scope.edititem.item_num, category, donor, $scope.edititem.description, $scope.edititem.min_bid)
+          itemService.editItem(itemService.activeitem.item.id, $scope.edititem.item_num, category, donor, $scope.edititem.description, $scope.edititem.min_bid, $scope.edititem.est_value)
 
         $scope.deleteItem = ->
           itemService.deleteItem(itemService.activeitem.item.id)
@@ -90,6 +90,7 @@ define ['angular'],
           $scope.edititem.donor = itemService.activeitem.item.donor
           $scope.edititem.description = itemService.activeitem.item.description
           $scope.edititem.min_bid = itemService.activeitem.item.minbid
+          $scope.edititem.est_value = itemService.activeitem.item.estvalue
 
         $scope.itemCleared = ->
           itemService.clearActiveItem()

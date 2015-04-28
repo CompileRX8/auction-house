@@ -159,6 +159,13 @@ define ['angular'],
                 total += bid.amount
             total
 
+          estValueTotal: (bidderdata) ->
+            total = 0
+            if bidderdata
+              for bid in bidderdata.winningBids
+                total += bid.item.estvalue
+            total
+
           paymentTotal: (bidderdata) ->
             total = 0
             if bidderdata
@@ -238,12 +245,12 @@ define ['angular'],
 
             dataService.setItemUpdateCallback(updateActiveItem)
 
-          addItem: (item_num, category, donor, description, min_bid) ->
-            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid) }
+          addItem: (item_num, category, donor, description, min_bid, est_value) ->
+            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid), est_value: parseFloat(est_value) }
             statusService.httpPost('/items', itemdata)
 
-          editItem: (item_id, item_num, category, donor, description, min_bid) ->
-            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid) }
+          editItem: (item_id, item_num, category, donor, description, min_bid, est_value) ->
+            itemdata = { item_num: item_num, category: category, donor: donor, description: description, min_bid: parseFloat(min_bid), est_value: parseFloat(est_value) }
             statusService.httpPost('/items/' + item_id + '/edit', itemdata)
 
           deleteItem: (item_id) ->

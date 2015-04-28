@@ -32,6 +32,33 @@ html, body {
   }
 }
 
+@media (min-width: 768px){
+  #pagesearch {
+    position: absolute;
+    top: 0px;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow-y: scroll;
+  }
+  #pagedetails {
+    position: absolute;
+    top: 0px;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow-y: scroll;
+  }
+}
+
+#pagesearch {
+  height: 100%;
+}
+
+#pagedetails {
+  height: 100%;
+}
+
 #main-header, #main-footer {
   display: block;
   height: 5%;
@@ -42,38 +69,8 @@ html, body {
   overflow-y: auto;
 }
 
-.pagesearch {
-  position: fixed;
-  top: 150px;
-  left: 20px;
-  width: 15%;
-}
-
-.pagedetails {
-  position: fixed;
-  top: 60px;
-  right: 30px;
-}
-
-#itemdetails {
-  width: 30%;
-}
-
-#bidderdetails {
-  width: 50%;
-}
-
-thead, tfoot {
-  height: 10%;
-}
-
-tbody {
-  height: 80%;
-  overflow-y: auto;
-}
-
 .scrollable {
-  overflow-y: auto;
+  overflow: scroll;
 }
 
 /* AngularJS */

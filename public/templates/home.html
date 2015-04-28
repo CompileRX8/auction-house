@@ -12,7 +12,7 @@
         <div class="col-md-2 text-right"><h2>Total Payments</h2></div>
     </div>
     <marquee behavior="scroll" scrollamount="2" direction="up" style="height: 500px">
-        <div class="row" ng-repeat-start="bidderdata in dataService.biddersdata | filter:dataService.hasWinningBids | orderBy: bidder.id">
+        <div class="row" ng-repeat-start="bidderdata in dataService.biddersdata | filter:dataService.hasWinningBids | orderBy:'bidder.id'">
             <div class="col-md-2 text-right"><h2>{{ bidderdata.bidder.id }}</h2></div>
             <div class="col-md-2"><h2>{{ bidderdata.bidder.name }}</h2></div>
             <div class="col-md-2 col-md-offset-4 text-right"><h2>{{ dataService.winningBidsTotal(bidderdata) | currency }}</h2></div>
@@ -20,7 +20,7 @@
         </div>
         <div class="row">
             <div class="col-md-6 col-md-offset-4">
-                <div class="row" ng-repeat="bid in bidderdata.winningBids | orderBy: item.itemNumber">
+                <div class="row" ng-repeat="bid in bidderdata.winningBids | orderBy:'item.itemNumber'">
                     <div class="col-md-2"><h3>{{bid.item.itemNumber}}</h3></div>
                     <div class="col-md-7"><h3>{{bid.item.description}} ({{bid.item.donor}})</h3></div>
                     <div class="col-md-3 text-right"><h3>{{bid.amount | currency}}</h3></div>
