@@ -3,25 +3,25 @@
         <h1 class="page-header">Bid Entry</h1>
     </header>
     <form name="wbForm" class="css-form" novalidate>
-    <table class="table table-condensed table-hover table-responsive">
+    <table class="table table-condensed table-hover search-table">
         <thead>
         <tr>
-            <th class="col-sm-2">Item Number</th>
-            <th class="col-sm-3">Description</th>
+            <th class="col-sm-1">Item #</th>
+            <th class="col-sm-4">Description</th>
             <th class="col-sm-2">Bidder ID</th>
             <th class="col-sm-2">Name</th>
-            <th class="col-sm-2">Amount</th>
-            <th class="col-sm-1"></th>
+            <th class="col-sm-2 text-right">Amount</th>
+            <th class="col-sm-1">&nbsp;</th>
         </tr>
         </thead>
         <tbody>
         <tr ng-repeat="winningbid in dataService.winningbids | orderBy: [ 'item.itemNumber', 'bidder.name' ]">
-            <td ng-click="bidClicked(winningbid.id)">{{winningbid.item.itemNumber}}</td>
-            <td ng-click="bidClicked(winningbid.id)">{{winningbid.item.description}}</td>
-            <td ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.id}}</td>
-            <td ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.name}}</td>
-            <td ng-click="bidClicked(winningbid.id)" class="text-right">{{winningbid.amount | currency}}</td>
-            <td>
+            <td class="col-sm-1" ng-click="bidClicked(winningbid.id)">{{winningbid.item.itemNumber}}</td>
+            <td class="col-sm-4" ng-click="bidClicked(winningbid.id)">{{winningbid.item.description}}</td>
+            <td class="col-sm-2" ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.id}}</td>
+            <td class="col-sm-2" ng-click="bidClicked(winningbid.id)">{{winningbid.bidder.name}}</td>
+            <td class="col-sm-2 text-right" ng-click="bidClicked(winningbid.id)">{{winningbid.amount | currency}}</td>
+            <td class="col-sm-1">
                 <span ng-show="bidEntryService.activebid && bidEntryService.activebid.id == winningbid.id">
                     <button class="btn btn-primary btn-xs" data-toggle="modal" data-target="#editModal">Edit</button>
                     <button class="btn btn-danger btn-xs" data-toggle="modal" data-target="#deleteModal">Delete</button>
@@ -31,21 +31,21 @@
         </tbody>
         <tfoot>
         <tr>
-            <td>
+            <td class="col-sm-1">
                 <input type="text" class="form-control" placeholder="Item Num" name="wbItemNum" id="wbItemNum" ng-model="newbid.itemNumber" autofocus required ng-change="item_num_change(newbid)">
             </td>
-            <td>{{ newbid.description }}</td>
-            <td>
+            <td class="col-sm-4">{{ newbid.description }}</td>
+            <td class="col-sm-2">
                 <input type="text" class="form-control" placeholder="Bidder ID" name="wbBidderId" ng-model="newbid.bidderId" min="1" integer required ng-change="bidder_id_change(newbid)">
             </td>
-            <td>{{ newbid.bidderName }}</td>
-            <td>
+            <td class="col-sm-2">{{ newbid.bidderName }}</td>
+            <td class="col-sm-2">
                 <div class="input-group">
                     <span class="input-group-addon">$</span>
                     <input type="text" class="form-control text-right" placeholder="Amount" name="wbAmount" ng-model="newbid.amount" smart-float required>
                 </div>
             </td>
-            <td>
+            <td class="col-sm-1">
                 <button type="submit" class="btn btn-success" ng-click="addWinningBid()" ng-disabled="wbForm.$invalid">Add</button>
             </td>
         </tr>

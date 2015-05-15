@@ -4,44 +4,42 @@
     </header>
     <div class="row">
         <div class="col-md-5 col-sm-4">
-            <div id="biddersearch" class="panel panel-default">
-                <div class="panel-heading">
-                    <div class="row form-group">
-                        <label class="col-sm-4 col-md-3 control-label">Search</label>
-                        <div class="col-sm-8 col-md-9">
+            <div class="panel panel-default search-panel">
+                <div class="panel-heading search-heading">
+                    <div class="row form-group-sm">
+                        <label class="col-sm-4 col-md-2 control-label">Search</label>
+                        <div class="col-sm-8 col-md-10">
                             <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
                         </div>
                     </div>
                 </div>
-               <table class="table table-condensed table-hover scrollable">
+                <table class="table table-condensed table-hover search-table">
                     <thead>
                     <tr>
-                        <th>Bidder ID</th>
-                        <th>Name</th>
-                        <th class="text-right">Winning Bids</th>
-                        <th class="text-right">Payments</th>
+                        <th class="col-md-2">Bidder ID</th>
+                        <th class="col-md-4">Name</th>
+                        <th class="col-md-3 text-right">Winning Bids</th>
+                        <th class="col-md-3 text-right">Payments</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr ng-repeat="bidderdata in dataService.biddersdata | bidderSearch: searchterm | orderBy:'bidder.id'"
                         ng-click="bidderClicked(bidderdata.bidder.id)">
-                        <td class="text-right">{{ bidderdata.bidder.id }}</td>
-                        <td>{{bidderdata.bidder.name}}</td>
-                        <td class="text-right">{{ dataService.winningBidsTotal(bidderdata) | currency }}</td>
-                        <td class="text-right">{{ dataService.paymentTotal(bidderdata) | currency }}</td>
+                        <td class="col-md-2 text-right">{{ bidderdata.bidder.id }}</td>
+                        <td class="col-md-4">{{bidderdata.bidder.name}}</td>
+                        <td class="col-md-3 text-right">{{ dataService.winningBidsTotal(bidderdata) | currency }}</td>
+                        <td class="col-md-3 text-right">{{ dataService.paymentTotal(bidderdata) | currency }}</td>
                     </tr>
                     </tbody>
+                    <tfoot>
+                    <tr class="form-group-sm">
+                        <td class="col-md-2">&nbsp;</td>
+                        <td class="col-md-4"><input type="text" id="biddername" class="form-control" ng-model="bidder_name" placeholder="Bidder Name"></td>
+                        <td class="col-md-1">&nbsp;</td>
+                        <td class="col-md-5"><button class="btn btn-success btn-sm" ng-click="addBidder()" ng-disabled="bidder_name == ''">Add</button></td>
+                    </tr>
+                    </tfoot>
                 </table>
-                <div class="panel-footer">
-                    <div class="row form-group">
-                        <div class="col-md-7">
-                            <input type="text" id="biddername" class="form-control" ng-model="bidder_name" placeholder="Bidder Name">
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-success" ng-click="addBidder()" ng-disabled="bidder_name == ''">Add Bidder</button>
-                        </div>
-                    </div>
-                </div>
             </div>
         </div>
         <div class="col-md-7 col-sm-8">

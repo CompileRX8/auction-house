@@ -32,45 +32,48 @@ html, body {
   }
 }
 
-@media (min-width: 768px){
-  #pagesearch {
-    position: absolute;
-    top: 0px;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow-y: scroll;
-  }
-  #pagedetails {
-    position: absolute;
-    top: 0px;
-    bottom: 0;
-    left: 0;
-    width: 100%;
-    overflow-y: scroll;
-  }
-}
-
-#pagesearch {
-  height: 100%;
-}
-
-#pagedetails {
-  height: 100%;
-}
-
 #main-header, #main-footer {
   display: block;
-  height: 5%;
+  height: 50px;
 }
 
 #main-section {
-  height: 90%;
+  height: calc(~"100% - 100px");
+  display: block;
   overflow-y: auto;
 }
 
-.scrollable {
-  overflow: scroll;
+.search-table {
+  width: 100%;
+  thead, tbody, tfoot {
+    display: block;
+    tr {
+      display: block;
+      th, td {
+        display: block;
+        float: left;
+      }
+    }
+    tr:after {
+      content: ' ';
+      display: block;
+      visibility: hidden;
+      clear: both;
+    }
+  }
+  tbody {
+    overflow-y: auto;
+    height: 300px;
+  }
+}
+
+.recon-details {
+  width: 100%;
+  overflow-y: auto;
+  height: 65vh;
+  div > div {
+    display: block;
+  }
 }
 
 /* AngularJS */

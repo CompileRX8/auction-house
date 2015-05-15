@@ -4,61 +4,49 @@
     </header>
     <div class="row">
         <div class="col-md-8">
-            <div id="itemsearch" class="panel panel-default">
-                <div class="panel-heading">
-                    <div class="row form-group">
+            <div class="panel panel-default search-panel">
+                <div class="panel-heading search-heading">
+                    <div class="row form-group-sm">
                         <label class="col-sm-4 col-md-1 control-label">Search</label>
                         <div class="col-sm-8 col-md-11">
                             <input type="text" id="searchterm" class="form-control" ng-model="searchterm">
                         </div>
                     </div>
                 </div>
-                <table class="table table-hover table-condensed table-responsive">
+                <table class="table table-condensed table-hover search-table">
                     <thead>
                     <tr>
-                        <th class="col-md-1">Item Number</th>
-                        <th class="col-md-1">Category</th>
+                        <th class="col-md-1">Item #</th>
+                        <th class="col-md-2">Category</th>
                         <th class="col-md-2">Donor</th>
-                        <th class="col-md-2">Description</th>
-                        <th class="text-right col-md-2">Min Bid</th>
-                        <th class="text-right col-md-2">Est. Value</th>
-                        <th class="text-right col-md-2">Sold For</th>
+                        <th class="col-md-4">Description</th>
+                        <th class="text-right col-md-1">Min Bid</th>
+                        <th class="text-right col-md-1">Est Val</th>
+                        <th class="text-right col-md-1">Sold For</th>
                     </tr>
                     </thead>
                     <tbody>
                     <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy:'item.itemNumber'"
                         ng-click="itemClicked(itemdata.item.id)">
-                        <td>{{itemdata.item.itemNumber}}</td>
-                        <td>{{itemdata.item.category}}</td>
-                        <td>{{itemdata.item.donor}}</td>
-                        <td>{{itemdata.item.description}}</td>
-                        <td class="text-right">{{itemdata.item.minbid | currency}}</td>
-                        <td class="text-right">{{itemdata.item.estvalue | currency}}</td>
-                        <td class="text-right">{{dataService.winningBidsTotal(itemdata) | currency}}</td>
+                        <td class="col-md-1">{{itemdata.item.itemNumber}}</td>
+                        <td class="col-md-2">{{itemdata.item.category}}</td>
+                        <td class="col-md-2">{{itemdata.item.donor}}</td>
+                        <td class="col-md-4">{{itemdata.item.description}}</td>
+                        <td class="text-right col-md-1">{{itemdata.item.minbid | currency}}</td>
+                        <td class="text-right col-md-1">{{itemdata.item.estvalue | currency}}</td>
+                        <td class="text-right col-md-1">{{dataService.winningBidsTotal(itemdata) | currency}}</td>
                     </tr>
                     </tbody>
                     <tfoot>
-                    <form name="newitem" class="css-form" novalidate>
-                        <tr>
-                            <td class="col-md-1"><input type="text" class="form-control" name="iItemNum" ng-model="item.item_num" placeholder="Item #" required></td>
-                            <td class="col-md-1"><input type="text" class="form-control" name="iCat" ng-model="item.category" placeholder="Category"></td>
-                            <td class="col-md-2"><input type="text" class="form-control" name="iDonor" ng-model="item.donor" placeholder="Donor"></td>
-                            <td class="col-md-2"><input type="text" class="form-control" name="iDesc" ng-model="item.description" placeholder="Description" required></td>
-                            <td class="col-md-2">
-                                <div class="input-group">
-                                    <span class="input-group-addon">$</span>
-                                    <input type="text" class="form-control text-right" name="iMinBid" ng-model="item.min_bid" placeholder="Min Bid" smart-float required>
-                                </div>
-                            </td>
-                            <td class="col-md-2">
-                                <div class="input-group">
-                                    <span class="input-group-addon">$</span>
-                                    <input type="text" class="form-control text-right" name="iEstValue" ng-model="item.est_value" placeholder="Est. Value" smart-float required>
-                                </div>
-                            </td>
-                            <td class="col-md-2 text-right"><button class="btn btn-success" ng-click="addItem()" ng-disabled="newitem.$invalid">New Item</button></td>
-                        </tr>
-                    </form>
+                    <tr class="form-group-sm">
+                        <td class="col-md-1"><input type="text" class="form-control" name="iItemNum" ng-model="item.item_num" placeholder="Item #" required></td>
+                        <td class="col-md-2"><input type="text" class="form-control" name="iCat" ng-model="item.category" placeholder="Category"></td>
+                        <td class="col-md-2"><input type="text" class="form-control" name="iDonor" ng-model="item.donor" placeholder="Donor"></td>
+                        <td class="col-md-4"><input type="text" class="form-control" name="iDesc" ng-model="item.description" placeholder="Description" required></td>
+                        <td class="col-md-1 text-right"><input type="text" class="form-control text-right" name="iMinBid" ng-model="item.min_bid" placeholder="Min Bid ($)" smart-float required></td>
+                        <td class="col-md-1 text-right"><input type="text" class="form-control text-right" name="iEstValue" ng-model="item.est_value" placeholder="Est. Value" smart-float required></td>
+                        <td class="col-md-1 text-right"><button class="btn btn-success btn-sm" ng-click="addItem()" ng-disabled="newitem.$invalid">Add</button></td>
+                    </tr>
                     </tfoot>
                 </table>
             </div>

@@ -26,6 +26,8 @@ libraryDependencies ++= Seq(
 
 CoffeeScriptKeys.bare := true
 
+LessKeys.strictMath in Assets := true
+
 includeFilter in (Assets, LessKeys.less) := "*.less"
 
 lazy val root = (project in file(".")).enablePlugins(PlayScala).enablePlugins(SbtWeb)
