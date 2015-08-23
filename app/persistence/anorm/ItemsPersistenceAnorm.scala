@@ -1,7 +1,9 @@
 package persistence.anorm
 
+import anorm._
+import anorm.SqlParser._
 import akka.actor.ActorRef
-import models.{Bidder, Item, WinningBid}
+import models.{ItemException, Bidder, Item, WinningBid}
 import persistence.ItemsPersistence
 import play.api.Play.current
 
