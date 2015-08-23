@@ -15,7 +15,7 @@ case class OrganizationException(message: String, cause: Exception = null) exten
 case class OrganizationData(organization: Organization, events: List[Event])
 
 case class Organization(id: Option[Long], name: String)
-object Organization extends ((Option[Long], String) => Bidder) {
+object Organization extends ((Option[Long], String) => Organization) {
   import actors.OrganizationsActor._
 
   implicit val organizationFormat = Json.format[Organization]
@@ -68,9 +68,9 @@ object Event {
   }
 
   def all() = Success(List[Event]())
-  def get(id: Long) = Success(None[Event])
+  def get(id: Long) = Success(None)
   def create(organization: Organization, description: String) = Success(Some(Event(None, organization, description)))
-  def delete(id: Long) = Success(None[Event])
+  def delete(id: Long) = Success(None)
   def edit(id: Long, description: String) = Success(Some(Event(Some(id), null, description)))
   def loadFromDataSource() = {
     ???

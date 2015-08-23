@@ -7,7 +7,7 @@ import scala.util.Try
 
 trait BiddersPersistence {
 
-  def load(biddersActor: ActorRef): Boolean
+  def load(biddersActor: ActorRef): Try[Boolean]
 
   def create(bidder: Bidder): Try[Bidder]
 

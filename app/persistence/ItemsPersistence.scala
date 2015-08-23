@@ -7,7 +7,7 @@ import scala.util.Try
 
 trait ItemsPersistence {
 
-  def load(itemsActor: ActorRef): Boolean
+  def load(itemsActor: ActorRef): Try[Boolean]
 
   def create(item: Item): Try[Item]
 

@@ -4,6 +4,9 @@ import akka.actor.{Actor, Props}
 import models.{Organization, Event}
 import persistence.slick.OrganizationsPersistenceSlick
 import play.api.libs.concurrent.Akka
+import play.api.Play.current
+import scala.language.postfixOps
+import scala.util.{Success, Try, Failure}
 
 object OrganizationsActor {
   case object LoadFromDataSource

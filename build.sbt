@@ -1,27 +1,31 @@
 import sbt._
 import Keys._
-import play.Play.autoImport._
 import com.typesafe.sbt.coffeescript.SbtCoffeeScript.autoImport._
 import com.typesafe.sbt.less.SbtLess.autoImport._
 import com.typesafe.sbt.web.SbtWeb.autoImport._
-import play.PlayScala
 import com.typesafe.sbt.web.SbtWeb
 
 name := "AuctionHouse"
 
-version := "0.7-SNAPSHOT"
+version := "0.9-SNAPSHOT"
 
-scalaVersion := "2.11.5"
+scalaVersion := "2.11.6"
+
+resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 libraryDependencies ++= Seq(
   jdbc
-  ,anorm
-  ,"com.typesafe.play" %% "play-slick" % "0.8.1"
-  ,"org.webjars" %% "webjars-play" % "2.3.0"
+  ,evolutions
+//  ,"com.typesafe.play" %% "play-slick" % "1.0.1"
+//  ,"com.typesafe.play" %% "play-slick-evolutions" % "1.0.1"
+  ,"com.typesafe.play" %% "anorm" % "2.4.0"
+  ,"org.webjars" %% "webjars-play" % "2.4.0-1"
   ,"org.webjars" % "angularjs" % "1.3.15"
-  ,"org.webjars" % "bootstrap" % "3.3.4"
-  ,"com.typesafe.akka" %% "akka-actor" % "2.3.9"
+  ,"org.webjars" % "bootstrap" % "3.3.5"
+  ,"com.typesafe.akka" %% "akka-actor" % "2.3.11"
+  ,"com.h2database" % "h2" % "1.4.187"
 //  ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
+  ,specs2 % Test
 )
 
 CoffeeScriptKeys.bare := true

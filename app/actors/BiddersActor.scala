@@ -3,8 +3,7 @@ package actors
 import akka.actor.{Props, Actor}
 import models.{BidderException, Item, Payment, Bidder}
 import misc.Util
-import persistence.slick.{ItemsPersistenceSlick, BiddersPersistenceSlick}
-import persistence.{ItemsPersistence, BiddersPersistence}
+import persistence.anorm.{BiddersPersistenceAnorm, ItemsPersistenceAnorm}
 import scala.concurrent.Await
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
@@ -26,8 +25,8 @@ object BiddersActor {
 
   val biddersActor = Akka.system.actorOf(BiddersActor.props)
 
-  val biddersPersistence = BiddersPersistenceSlick
-  val itemsPersistence = ItemsPersistenceSlick
+  val biddersPersistence = BiddersPersistenceAnorm
+  val itemsPersistence = ItemsPersistenceAnorm
 }
 
 

@@ -14,7 +14,7 @@ object Global extends GlobalSettings {
   override def onStart(app: Application) = {
     val loadSuccessful = Bidder.loadFromDataSource flatMap { bidderSuccess =>
       Item.loadFromDataSource map { itemSuccess =>
-        bidderSuccess && itemSuccess
+        bidderSuccess flatMap { _ => itemSuccess }
       }
     }
     Await.result(loadSuccessful, Util.defaultAwaitTimeout)
