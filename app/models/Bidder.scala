@@ -79,6 +79,6 @@ object Bidder extends ((Option[Long], String) => Bidder) {
   }
 
   def loadFromDataSource() = {
-    (biddersActor ? LoadFromDataSource).mapTo[Boolean]
+    (biddersActor ? LoadFromDataSource).mapTo[Try[Boolean]]
   }
 }

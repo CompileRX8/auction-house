@@ -65,7 +65,7 @@ object Item extends ((Option[Long], String, String, String, String, BigDecimal, 
   }
 
   def loadFromDataSource() = {
-    (itemsActor ? LoadFromDataSource).mapTo[Boolean]
+    (itemsActor ? LoadFromDataSource).mapTo[Try[Boolean]]
   }
 }
 

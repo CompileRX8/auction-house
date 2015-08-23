@@ -1,14 +1,14 @@
 package persistence.slick
 
 import models.{Bidder, Item, Payment, WinningBid}
-import play.api.db.slick.Config.driver.simple._
-import play.api.db.slick._
-import play.api.Play.current
+//import play.api.db.slick.Config.driver.simple._
+//import play.api.db.slick._
+//import play.api.Play.current
 
-import scala.slick.jdbc.JdbcBackend
+//import scala.slick.jdbc.JdbcBackend
 
 trait SlickPersistence {
-
+  /*
   val db = {
     if(System.getProperty("database") != null) {
       DB(System.getProperty("database"))
@@ -84,5 +84,5 @@ trait SlickPersistence {
     def bidderIditemIdIdx = index("winningbid_bidder_id_item_id_idx", (bidderId, itemId), unique = true)
   }
   val winningBidsQuery = TableQuery[WinningBids]
-
+*/
 }
