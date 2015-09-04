@@ -3,34 +3,43 @@
 # ~~~~
 
 # Tasks
-GET         /                                     controllers.AppController.index
+GET         /                                   controllers.AppController.index
 
-GET         /bidders                              controllers.BidderController.bidders
-POST        /bidders                              controllers.BidderController.newBidder
-POST        /bidders/:bidderId/delete             controllers.BidderController.deleteBidder(bidderId: Long)
-POST        /bidders/:bidderId/edit               controllers.BidderController.editBidder(bidderId: Long)
+GET         /bidders                            controllers.BidderController.bidders
+POST        /bidders                            controllers.BidderController.newBidder
+POST        /bidders/:bidderId/delete           controllers.BidderController.deleteBidder(bidderId: Long)
+POST        /bidders/:bidderId/edit             controllers.BidderController.editBidder(bidderId: Long)
 
-GET         /items                                controllers.ItemController.items
-POST        /items                                controllers.ItemController.newItem
-POST        /items/:itemId/delete                 controllers.ItemController.deleteItem(itemId: Long)
-POST        /items/:itemId/edit                   controllers.ItemController.editItem(itemId: Long)
-POST        /items/:itemId/bid                    controllers.ItemController.addWinningBid(itemId: Long)
-POST        /items/:winningBidId/editbid          controllers.ItemController.editWinningBid(winningBidId: Long)
-POST        /items/:winningBidId/deletebid        controllers.ItemController.deleteWinningBid(winningBidId: Long)
+GET         /items                              controllers.ItemController.items
+POST        /items                              controllers.ItemController.newItem
+POST        /items/:itemId/delete               controllers.ItemController.deleteItem(itemId: Long)
+POST        /items/:itemId/edit                 controllers.ItemController.editItem(itemId: Long)
 
-POST        /payments/:bidderId                   controllers.PaymentController.newPayment(bidderId: Long)
+GET         /bids                               controllers.BidController.bids
+POST        /bids/:itemId                       controllers.BidController.newBid(itemId: Long)
+POST        /bids/:bidId/delete                 controllers.BidController.deleteBid(bidId: Long)
+POST        /bids/:bidId/edit                   controllers.BidController.editBid(bidId: Long)
 
-GET         /biddersFeed                          controllers.AppController.biddersFeed
-GET         /pushBidders                          controllers.AppController.pushBidders
-GET         /itemsFeed                            controllers.AppController.itemsFeed
-GET         /pushItems                            controllers.AppController.pushItems
+POST        /payments/:bidderId                 controllers.PaymentController.newPayment(bidderId: Long)
 
-POST        /login                                controllers.AppController.login
-POST        /logout                               controllers.AppController.logout
+GET         /organizations                      controllers.OrganizationController.organizations
+POST        /organizations                      controllers.OrganizationController.newOrganization
+POST        /organizations/:orgId/delete        controllers.OrganizationController.deleteOrganization(orgId: Long)
+POST        /organizations/:orgId/edit          controllers.OrganizationController.editOrganization(orgId: Long)
+
+GET         /biddersFeed                        controllers.AppController.biddersFeed
+GET         /pushBidders                        controllers.AppController.pushBidders
+GET         /itemsFeed                          controllers.AppController.itemsFeed
+GET         /pushItems                          controllers.AppController.pushItems
+GET         /organizationsFeed                  controllers.AppController.organizationsFeed
+GET         /pushOrganizations                  controllers.AppController.pushOrganizations
+
+POST        /login                              controllers.AppController.login
+POST        /logout                             controllers.AppController.logout
 
 # Map static resources from the /public folder to the /assets URL path
-GET         /webjars/*file                        controllers.WebJarAssets.at(file)
+GET         /webjars/*file                      controllers.WebJarAssets.at(file)
 
-GET         /javascripts/routes                   controllers.AppController.javascriptRoutes
+GET         /javascripts/routes                 controllers.AppController.javascriptRoutes
 
-GET         /*file                                controllers.Assets.at(path="/public", file)
+GET         /*file                              controllers.Assets.at(path="/public", file)

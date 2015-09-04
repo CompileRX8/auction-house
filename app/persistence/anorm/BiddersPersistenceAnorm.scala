@@ -1,11 +1,14 @@
 package persistence.anorm
 
+import java.sql.Connection
+
 import akka.actor.ActorRef
 import anorm.SqlParser._
 import anorm._
 import models.{Bidder, BidderException, Payment}
 import persistence.BiddersPersistence
 import play.api.Play.current
+import scala.language.postfixOps
 
 import scala.util.Try
 
@@ -40,50 +43,42 @@ object BiddersPersistenceAnorm extends AnormPersistence with BiddersPersistence 
     }
   }
 
-  override def load(biddersActor: ActorRef): Try[Boolean] = Try {
-    db.withConnection {
-      implicit c =>
-        SQL(bidderSQL).as(bidderMapper *).foreach { bidder =>
-          biddersActor ! bidder
-        }
-
-        SQL(paymentSQL).as(paymentMapper *).foreach { payment =>
-          biddersActor ! payment
-        }
-
-        true
+  override def load(biddersActor: ActorRef): Try[Boolean] = withDBConnection {
+    implicit c =>
+    SQL(bidderSQL).as(bidderMapper *).foreach { bidder =>
+      biddersActor ! bidder
     }
+
+    SQL(paymentSQL).as(paymentMapper *).foreach { payment =>
+      biddersActor ! payment
+    }
+
+    true
   }
 
   val paymentsByBidderSQL = SQL(paymentSQL + """ where p."bidder_id" = {bidder_id} """.stripMargin)
 
-  override def paymentsByBidder(bidder: Bidder): Try[List[Payment]] = Try {
-    db.withConnection {
-      implicit c =>
-        paymentsByBidderSQL.on(
-          'bidder_id -> bidder.id.get
-        ).as(paymentMapper *)
-    }
+  override def paymentsByBidder(bidder: Bidder): Try[List[Payment]] = withDBConnection {
+    implicit c =>
+    paymentsByBidderSQL.on(
+      'bidder_id -> bidder.id.get
+    ).as(paymentMapper *)
   }
 
   val sortedBiddersSQL = SQL(bidderSQL + """ order by "name" """.stripMargin)
 
-  override def sortedBidders: Try[List[Bidder]] = Try {
-    db.withConnection {
-      implicit c =>
-        sortedBiddersSQL.as(bidderMapper *)
-    }
+  override def sortedBidders: Try[List[Bidder]] = withDBConnection {
+    implicit c =>
+      sortedBiddersSQL.as(bidderMapper *)
   }
 
   val bidderByIdSQL = SQL(bidderSQL + """ where "id" = {id} """.stripMargin)
 
-  override def bidderById(id: Long): Try[Option[Bidder]] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderByIdSQL.on(
-          'id -> id
-        ).as(bidderMapper.singleOpt)
-    }
+  override def bidderById(id: Long): Try[Option[Bidder]] = withDBConnection {
+    implicit c =>
+      bidderByIdSQL.on(
+        'id -> id
+      ).as(bidderMapper.singleOpt)
   }
 
   val bidderUpdateSQL = SQL(
@@ -94,18 +89,15 @@ object BiddersPersistenceAnorm extends AnormPersistence with BiddersPersistence 
     """.stripMargin
   )
 
-  override def edit(bidder: Bidder): Try[Bidder] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderUpdateSQL.on(
-          'name -> bidder.name,
-          'id -> bidder.id.get
-        ).executeUpdate() match {
-          case 1 => bidder
-          case _ => throw new BidderException(s"Unable to edit bidder with unique ID ${bidder.id.get}")
-        }
-
-    }
+  override def edit(bidder: Bidder): Try[Bidder] = withDBConnection {
+    implicit c =>
+      bidderUpdateSQL.on(
+        'name -> bidder.name,
+        'id -> bidder.id.get
+      ).executeUpdate() match {
+        case 1 => bidder
+        case _ => throw new BidderException(s"Unable to edit bidder with unique ID ${bidder.id.get}")
+      }
   }
 
   val bidderDeleteSQL = SQL(
@@ -114,27 +106,23 @@ object BiddersPersistenceAnorm extends AnormPersistence with BiddersPersistence 
     """.stripMargin
   )
 
-  override def delete(bidder: Bidder): Try[Bidder] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderDeleteSQL.on(
-          'id -> bidder.id.get
-        ).executeUpdate() match {
-          case 1 => bidder
-          case _ => throw new BidderException(s"Unable to delete bidder with unique ID ${bidder.id.get}")
-        }
-    }
+  override def delete(bidder: Bidder): Try[Bidder] = withDBConnection {
+    implicit c =>
+      bidderDeleteSQL.on(
+        'id -> bidder.id.get
+      ).executeUpdate() match {
+        case 1 => bidder
+        case _ => throw new BidderException(s"Unable to delete bidder with unique ID ${bidder.id.get}")
+      }
   }
 
   val bidderByNameSQL = SQL(bidderSQL + """ where "name" = {name} """.stripMargin)
 
-  override def bidderByName(name: String): Try[Option[Bidder]] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderByNameSQL.on(
-          'name -> name
-        ).as(bidderMapper.singleOpt)
-    }
+  override def bidderByName(name: String): Try[Option[Bidder]] = withDBConnection {
+    implicit c =>
+      bidderByNameSQL.on(
+        'name -> name
+      ).as(bidderMapper.singleOpt)
   }
 
   val bidderInsertSQL = SQL(
@@ -144,13 +132,11 @@ object BiddersPersistenceAnorm extends AnormPersistence with BiddersPersistence 
     """.stripMargin
   )
 
-  override def create(bidder: Bidder): Try[Bidder] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderInsertSQL.on(
-          'name -> bidder.name
-        ).executeInsert(bidderMapper.single)
-    }
+  override def create(bidder: Bidder): Try[Bidder] = withDBConnection {
+    implicit c =>
+      bidderInsertSQL.on(
+        'name -> bidder.name
+      ).executeInsert(bidderMapper.single)
   }
 
   val paymentInsertSQL = SQL(
@@ -160,13 +146,11 @@ object BiddersPersistenceAnorm extends AnormPersistence with BiddersPersistence 
     """.stripMargin
   )
 
-  override def create(payment: Payment): Try[Payment] = Try {
-    db.withConnection {
-      implicit c =>
-        bidderInsertSQL.on(
-          'bidder_id -> payment.bidder.id.get,
-          'description -> payment.description,
-          'amount -> payment.amount).executeInsert(paymentMapper.single)
-    }
+  override def create(payment: Payment): Try[Payment] = withDBConnection {
+    implicit c =>
+      bidderInsertSQL.on(
+        'bidder_id -> payment.bidder.id.get,
+        'description -> payment.description,
+        'amount -> payment.amount).executeInsert(paymentMapper.single)
   }
 }

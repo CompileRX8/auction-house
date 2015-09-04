@@ -23,14 +23,19 @@ object AppController extends Controller with Secured{
 
   val (biddersOut, biddersChannel) = Concurrent.broadcast[JsValue]
   val (itemsOut, itemsChannel) = Concurrent.broadcast[JsValue]
+  val (organizationsOut, organizationsChannel) = Concurrent.broadcast[JsValue]
 
   /** Enumeratee for detecting disconnect of SSE stream */
   def connDeathWatch(addr: String): Enumeratee[JsValue, JsValue] =
     Enumeratee.onIterateeDone{ () => println(addr + " - SSE disconnected") }
 
+  implicit val organizationFormat = Json.format[Organization]
+  implicit val contactFormat = Json.format[Contact]
+  implicit val eventFormat = Json.format[Event]
+  implicit val organizationDataFormat = Json.format[OrganizationData]
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
-  implicit val winningBidFormat = Json.format[WinningBid]
+  implicit val winningBidFormat = Json.format[Bid]
   implicit val bidderDataFormat = Json.format[BidderData]
   implicit val itemFormat = Json.format[Item]
   implicit val itemDataFormat = Json.format[ItemData]
@@ -85,6 +90,30 @@ object AppController extends Controller with Secured{
     }
   }
 
+  def organizationsFeed = Action { req =>
+    println(req.remoteAddress + " - SSE connected: Organizations")
+
+    Ok.feed(organizationsOut
+      &> Concurrent.buffer(50)
+      &> connDeathWatch(req.remoteAddress)
+      &> EventSource()
+    ).as("text/event-stream")
+  }
+
+  def pushOrganizations = Action { req =>
+    Organization.currentOrganizations() match {
+      case Success(orgsData) =>
+        logger.debug(s"orgsData: $orgsData")
+        val jsonOrgsData = Json.toJson(orgsData)
+        logger.debug(s"jsonOrgsData: $jsonOrgsData")
+        organizationsChannel.push(jsonOrgsData)
+        Ok
+      case Failure(e) =>
+        logger.error("Failed to push organizations", e)
+        BadRequest(e.getMessage)
+    }
+  }
+
   def javascriptRoutes = Action {
     implicit request =>
       Ok(
@@ -115,7 +144,7 @@ object AppController extends Controller with Secured{
       val password = (request.body \ "password").as[String]
 
       val token = java.util.UUID.randomUUID().toString
-      val userObj = Json.obj("token" -> token, "firstName" -> "Ryan", "lastName" -> "Highley", "age" -> 41, "email" -> email)
+      val userObj = Json.obj("token" -> token, "firstName" -> "Ryan", "lastName" -> "Highley", "age" -> 42, "email" -> email)
       tokens += ( token -> userObj )
 
       println(s"userObj: $userObj")

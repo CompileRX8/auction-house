@@ -115,7 +115,7 @@ class AuctionDemoActor extends Actor with ActorLogging {
       val item = itemData(itemIdx)
       val amount = item.item.minbid + random.nextInt(300)
       log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
-      Item.addWinningBid(bidder.bidder, item.item, amount) match {
+      Item.addBid(bidder.bidder, item.item, amount) match {
         case Success(winningBid) =>
           itemData = Item.currentItems().get
           log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", winningBid.bidder, winningBid.item, winningBid.amount, itemData.size)

@@ -1,6 +1,6 @@
 package persistence.slick
 
-import models.{Bidder, Item, Payment, WinningBid}
+import models.{Bidder, Item, Payment, Bid$}
 //import play.api.db.slick.Config.driver.simple._
 //import play.api.db.slick._
 //import play.api.Play.current

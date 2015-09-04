@@ -1,7 +1,7 @@
 package controllers
 
+import models.Bidder
 import play.api.mvc.{Action, Controller}
-import models.{BidderException, Bidder}
 
 import scala.util.{Failure, Success}
 
@@ -13,9 +13,7 @@ object PaymentController extends Controller with Secured {
     Bidder.addPayment(bidderId, desc, amount) match {
       case Success(payment) =>
         AppController.pushBidders()
-        Ok(s"Created payment for ${payment.bidder.id.get} ${payment.bidder.name} for $$ ${payment.amount}")
-      case Failure(e: BidderException) =>
-        BadRequest(e.message)
+        Ok(s"Created payment for ${payment.bidder.bidderNumber} ${payment.bidder.contact.name} for $$ ${payment.amount}")
       case Failure(e) =>
         BadRequest(e.getMessage)
     }

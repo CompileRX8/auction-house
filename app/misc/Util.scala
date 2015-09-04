@@ -4,6 +4,7 @@ import java.sql.{Timestamp, Time, Date}
 import java.util.Calendar
 import play.api.db.DB
 import play.api.Play.current
+import scala.concurrent.{Await, Awaitable}
 import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 
@@ -31,8 +32,12 @@ object Util {
 
   def formatTime(time: Long) = s"${hours(time)}:${minutes(time)}:${seconds(time)}"
 
+  def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
+
   val defaultAwaitTimeout = Duration(5, TimeUnit.SECONDS)
 
-  def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
+  def wait[T](awaitable: Awaitable[T]): T = {
+    Await.result(awaitable, Util.defaultAwaitTimeout)
+  }
 
 }

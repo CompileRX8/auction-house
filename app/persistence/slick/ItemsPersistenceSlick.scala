@@ -3,7 +3,7 @@ package persistence.slick
 import java.sql.SQLException
 
 import akka.actor.ActorRef
-import models.{Bidder, Item, ItemException, WinningBid}
+import models.{Bidder, Item, ItemException, Bid$}
 import persistence.ItemsPersistence
 //import play.api.db.slick.Config.driver.simple._
 
@@ -42,7 +42,7 @@ object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
     }
   } */
 
-  override def create(winningBid: WinningBid): Try[WinningBid] = ??? /*Try {
+  override def create(winningBid: Bid): Try[Bid] = ??? /*Try {
     db withSession {
       implicit session =>
         val newWinningBidId = (winningBidsQuery returning winningBidsQuery.map(_.id)) += WinningBidRow.fromWinningBid(winningBid)
@@ -62,7 +62,7 @@ object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
     }
   }*/
 
-  override def delete(winningBid: WinningBid): Try[WinningBid] = ??? /*Try {
+  override def delete(winningBid: Bid): Try[Bid] = ??? /*Try {
     db withSession {
       implicit session =>
         val q = winningBidsQuery.filter(_.id === winningBid.id.get)
@@ -86,7 +86,7 @@ object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
     }
   }*/
 
-  override def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Try[WinningBid] = ??? /*Try {
+  override def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Try[Bid] = ??? /*Try {
     db withSession {
       implicit session =>
         val q = winningBidsQuery.filter(_.id === winningBidId)
@@ -98,21 +98,21 @@ object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
     }
   } */
 
-  override def winningBidById(id: Long): Try[Option[WinningBid]] = ??? /*Try {
+  override def winningBidById(id: Long): Try[Option[Bid]] = ??? /*Try {
     db withSession {
       implicit session =>
         winningBidsQuery.filter(_.id === id).list.headOption.map { row => row.toWinningBid }
     }
   } */
 
-  override def winningBidsByItem(item: Item): Try[List[WinningBid]] = ??? /*Try {
+  override def winningBidsByItem(item: Item): Try[List[Bid]] = ??? /*Try {
     db withSession {
       implicit session =>
         winningBidsQuery.filter(_.itemId === item.id.get).list.map { row => row.toWinningBid }
     }
   }*/
 
-  override def winningBidsByBidder(bidder: Bidder): Try[List[WinningBid]] = ??? /*Try {
+  override def winningBidsByBidder(bidder: Bidder): Try[List[Bid]] = ??? /*Try {
     db withSession {
       implicit session =>
         winningBidsQuery.filter(_.bidderId === bidder.id.get).list.map { row => row.toWinningBid }

@@ -11,20 +11,20 @@ version := "0.9-SNAPSHOT"
 
 scalaVersion := "2.11.6"
 
-resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
+//resolvers += "scalaz-bintray" at "http://dl.bintray.com/scalaz/releases"
 
 libraryDependencies ++= Seq(
   jdbc
   ,evolutions
-//  ,"com.typesafe.play" %% "play-slick" % "1.0.1"
-//  ,"com.typesafe.play" %% "play-slick-evolutions" % "1.0.1"
-  ,"com.typesafe.play" %% "anorm" % "2.4.0"
+  ,"com.typesafe.play" %% "play-slick" % "1.0.1"
+  ,"com.typesafe.play" %% "play-slick-evolutions" % "1.0.1"
+  ,"org.postgresql" % "postgresql" % "9.4-1201-jdbc41"
+//  ,"com.typesafe.play" %% "anorm" % "2.4.0"
+//  ,"com.h2database" % "h2" % "1.4.187"
   ,"org.webjars" %% "webjars-play" % "2.4.0-1"
   ,"org.webjars" % "angularjs" % "1.3.15"
   ,"org.webjars" % "bootstrap" % "3.3.5"
   ,"com.typesafe.akka" %% "akka-actor" % "2.3.11"
-  ,"com.h2database" % "h2" % "1.4.187"
-//  ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
   ,specs2 % Test
 )
 

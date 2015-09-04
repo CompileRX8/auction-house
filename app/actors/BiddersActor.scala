@@ -21,6 +21,8 @@ object BiddersActor {
 
   case class Payments(bidder: Bidder)
 
+  case class BiddersForEvent(eventId: Long)
+
   def props = Props(classOf[BiddersActor])
 
   val biddersActor = Akka.system.actorOf(BiddersActor.props)
@@ -29,14 +31,12 @@ object BiddersActor {
   val itemsPersistence = ItemsPersistenceAnorm
 }
 
-
-
 class BiddersActor extends Actor {
   import BiddersActor._
 
   private def findBidder(bidder: Bidder): Try[Option[Bidder]] = bidder.id match {
     case Some(id) => findBidder(id)
-    case None => findBidder(bidder.name)
+    case None => findBidder(bidder.contact.name)
   }
 
   private def findBidder(id: Long): Try[Option[Bidder]] = biddersPersistence.bidderById(id)
@@ -53,13 +53,13 @@ class BiddersActor extends Actor {
     case GetBidder(id) =>
       sender ! findBidder(id)
 
-    case newBidder @ Bidder(None, name) =>
-      sender ! findBidder(name).flatMap {
-        case Some(bidder) => Failure(new BidderException(s"Bidder name $name already exists as ID ${bidder.id.get}"))
+    case newBidder @ Bidder(None, event, bidderNumber, contact) =>
+      sender ! findBidder(contact.name).flatMap {
+        case Some(bidder) => Failure(new BidderException(s"Bidder name ${contact.name} already exists as Bidder Number ${bidder.bidderNumber}"))
         case None => biddersPersistence.create(newBidder)
       }
 
-    case bidder @ Bidder(idOpt @ Some(id), name) =>
+    case bidder @ Bidder(idOpt @ Some(id), event, bidderNumber, contact) =>
     // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
     case DeleteBidder(id) =>
@@ -71,10 +71,10 @@ class BiddersActor extends Actor {
                 case Nil =>
                   biddersPersistence.delete(bidder)
                 case payments =>
-                  Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with payments"))
+                  Failure(new BidderException(s"Cannot delete bidder ${bidder.contact.name} with payments"))
               }
             case winningBids =>
-              Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with winning bids"))
+              Failure(new BidderException(s"Cannot delete bidder ${bidder.contact.name} with winning bids"))
           }
         case None =>
           Failure(new BidderException(s"Cannot find bidder ID $id"))
