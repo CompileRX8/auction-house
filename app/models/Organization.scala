@@ -1,11 +1,13 @@
 package models
 
 import akka.util.Timeout
-import akka.pattern.ask
-import misc.Util
+import persistence.ContactsPersistence.contacts
+import persistence.EventsPersistence.events
+import persistence.OrganizationsPersistence.organizations
+import persistence.{ContactsPersistence, EventsPersistence}
 import play.api.libs.json.Json
 
-import scala.util.{Failure, Try}
+import scala.concurrent.Future
 import scala.concurrent.duration._
 import scala.language.postfixOps
 
@@ -15,87 +17,88 @@ case class OrganizationData(organization: Organization, events: List[Event], con
 
 case class Organization(id: Option[Long], name: String)
 object Organization extends ((Option[Long], String) => Organization) {
-  import actors.OrganizationsActor._
 
   implicit val organizationFormat = Json.format[Organization]
+  implicit val contactFormat = Json.format[Contact]
   implicit val eventFormat = Json.format[Event]
   implicit val organizationDataFormat = Json.format[OrganizationData]
 
   implicit val timeout = Timeout(3 seconds)
 
   def events(organization: Organization) =
-    Util.wait { (organizationsActor ? Events(organization)).mapTo[Try[List[Event]]] }
+    EventsPersistence.events.forOrgId(organization.id.get)
 
   def contacts(organization: Organization) =
-    Util.wait { (organizationsActor ? Contacts(organization)).mapTo[Try[List[Contact]]] }
+    ContactsPersistence.contacts.forOrgId(organization.id.get)
 
-  def addEvent(organizationId: Long, description: String): Try[Event] =
+  def addEvent(organizationId: Long, description: String): Future[Event] =
     get(organizationId) flatMap {
       case Some(organization) =>
         Event.create(organization, description)
       case None =>
-        Failure(new OrganizationException(s"Cannot find organization ID $organizationId to add event"))
+        Future.failed(new OrganizationException(s"Cannot find organization ID $organizationId to add event"))
     }
 
-  def addContact(organizationId: Long, name: String, email: Option[String], phone: Option[String]): Try[Contact] =
+  def addContact(organizationId: Long, name: String, email: Option[String], phone: Option[String]): Future[Contact] =
     get(organizationId) flatMap {
       case Some(organization) =>
         Contact.create(organization, name, email, phone)
       case None =>
-        Failure(new OrganizationException(s"Cannot find organization ID $organizationId to add contact"))
+        Future.failed(new OrganizationException(s"Cannot find organization ID $organizationId to add contact"))
     }
 
-  def all() = Util.wait { (organizationsActor ? GetOrganizations).mapTo[Try[List[Organization]]] }
+  def all() = organizations.all()
 
-  def get(id: Long) = Util.wait { (organizationsActor ? GetOrganization(id)).mapTo[Try[Option[Organization]]] }
+  def get(id: Long) = organizations.forId(id)
 
-  def create(name: String) = Util.wait { (organizationsActor ? Organization(None, name)).mapTo[Try[Organization]] }
+  def create(name: String) = organizations.create(Organization(None, name))
 
-  def delete(id: Long) = Util.wait { (organizationsActor ? DeleteOrganization(id)).mapTo[Try[Organization]] }
+  def delete(id: Long) = organizations.delete(id)
 
   def edit(id: Long, name: String) =
-    Util.wait { (organizationsActor ? EditOrganization(Organization(Some(id), name))).mapTo[Try[Organization]] }
+    organizations.edit(Organization(Some(id), name))
 
-  def currentOrganizations(): Try[List[OrganizationData]] = {
+  def currentOrganizations(): Future[List[OrganizationData]] = {
     Organization.all() map { orgs =>
-      orgs map { org =>
-        val events = Organization.events(org).getOrElse(List())
-        val contacts = Organization.contacts(org).getOrElse(List())
-        OrganizationData(org, events, contacts)
-      }
+        for {
+          org <- orgs
+          events <- Organization.events(org)
+          contacts <- Organization.contacts(org)
+        } yield {
+          OrganizationData(org, events, contacts)
+        }
     }
   }
 
   def loadFromDataSource() = {
-    (organizationsActor ? LoadFromDataSource).mapTo[Boolean]
   }
 }
 
 case class EventException(message: String, cause: Exception = null) extends Exception(message, cause)
 
 case class Event(id: Option[Long], organization: Organization, description: String)
-object Event {
-  import actors.OrganizationsActor._
+object Event extends ((Option[Long], Organization, String) => Event) {
 
+  implicit val organizationFormat = Json.format[Organization]
   implicit val eventFormat = Json.format[Event]
 
   implicit val timeout = Timeout(3 seconds)
 
-  def all() = Util.wait { (organizationsActor ? GetEvents).mapTo[Try[List[Event]]] }
+  def all(): Future[List[Event]] = events.all()
 
-  def get(id: Long) = Util.wait { (organizationsActor ? GetEvent(id)).mapTo[Try[Option[Event]]] }
+  def get(id: Long): Future[Option[Event]] = events.forId(id)
 
-  def create(organization: Organization, description: String) =
-    Util.wait { (organizationsActor ? Event(None, organization, description)).mapTo[Try[Event]] }
+  def create(organization: Organization, description: String): Future[Event] =
+    events.create(Event(None, organization, description))
 
-  def delete(id: Long) = Util.wait { (organizationsActor ? DeleteEvent(id)).mapTo[Try[Event]] }
+  def delete(id: Long): Future[Option[Event]] = events.delete(id)
 
-  def edit(id: Long, description: String) =
+  def edit(id: Long, description: String): Future[Option[Event]] =
     get(id) flatMap {
-      case Some(e @ Event(Some(_), org, oldDesc)) =>
-        Util.wait { (organizationsActor ? EditEvent(Event(Some(id), org, description))).mapTo[Try[Event]] }
+      case Some(e @ Event(Some(_), org, _)) =>
+        events.edit(Event(Some(id), org, description))
       case None =>
-        Failure(new EventException(s"Unable to find event ID $id to edit"))
+        Future.failed(new EventException(s"Unable to find event ID $id to edit"))
     }
 
   def loadFromDataSource() = {
@@ -105,28 +108,28 @@ object Event {
 case class ContactException(message: String, cause: Exception = null) extends Exception(message, cause)
 
 case class Contact(id: Option[Long], organization: Organization, name: String, email: Option[String], phone: Option[String])
-object Contact {
-  import actors.OrganizationsActor._
+object Contact extends ((Option[Long], Organization, String, Option[String], Option[String]) => Contact) {
 
+  implicit val organizationFormat = Json.format[Organization]
   implicit val contactFormat = Json.format[Contact]
 
   implicit val timeout = Timeout(3 seconds)
 
-  def all() = Util.wait { (organizationsActor ? GetContacts).mapTo[Try[List[Contact]]] }
+  def all() = contacts.all()
 
-  def get(id: Long) = Util.wait { (organizationsActor ? GetContact(id)).mapTo[Try[Option[Contact]]] }
+  def get(id: Long) = contacts.forId(id)
 
   def create(organization: Organization, name: String, email: Option[String], phone: Option[String]) =
-    Util.wait { (organizationsActor ? Contact(None, organization, name, email, phone)).mapTo[Try[Contact]] }
+    contacts.create(Contact(None, organization, name, email, phone))
 
-  def delete(id: Long) = Util.wait { (organizationsActor ? DeleteContact(id)).mapTo[Try[Contact]] }
+  def delete(id: Long) = contacts.delete(id)
 
   def edit(id: Long, name: String, email: Option[String], phone: Option[String]) =
     get(id) flatMap {
       case Some(c @ Contact(Some(_), org, _, _, _)) =>
-        Util.wait { (organizationsActor ? Contact(Some(id), org, name, email, phone)).mapTo[Try[Contact]] }
+        contacts.edit(c)
       case None =>
-        Failure(new ContactException(s"Unable to find contact ID $id to edit"))
+        Future.failed(new ContactException(s"Unable to find contact ID $id to edit"))
     }
 
   def loadFromDataSource() = {

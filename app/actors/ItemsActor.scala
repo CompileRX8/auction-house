@@ -3,7 +3,7 @@ package actors
 import akka.actor.{Props, Actor}
 import misc.Util
 import models._
-import persistence.anorm.ItemsPersistenceAnorm
+import persistence.ItemsPersistenceSlick
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
 import scala.language.postfixOps
@@ -29,7 +29,7 @@ object ItemsActor {
   def props = Props(classOf[ItemsActor])
 
   val itemsActor = Akka.system.actorOf(ItemsActor.props)
-  val itemsPersistence = ItemsPersistenceAnorm
+  val itemsPersistence = ItemsPersistenceSlick
 }
 
 

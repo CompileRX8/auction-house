@@ -1,11 +1,11 @@
 package controllers
 
-import models.{BidException, Bid, Bidder, Item}
+import models.{Bid, BidException, Bidder, Item}
 import play.api.Logger
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Controller}
 
-import scala.util.{Success, Failure}
+import scala.concurrent.Future
 
 object BidController extends Controller with Secured {
 
@@ -14,17 +14,17 @@ object BidController extends Controller with Secured {
   implicit val itemFormat = Json.format[Item]
   implicit val bidFormat = Json.format[Bid]
 
-  def bids = Action { implicit request =>
-    Bid.allByEvent(eventId) match {
-      case Success(bids) =>
-        Ok(Json.toJson(bids))
-      case Failure(e) =>
+  def bids = Action.async { implicit request =>
+    Bid.allByEvent(eventId) map { bids =>
+      Ok(Json.toJson(bids))
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to send bids", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def newBid(itemId: Long) = Action(parse.json) { implicit request =>
+  def newBid(itemId: Long) = Action.async(parse.json) { implicit request =>
     val bidderId = (request.body \ "bidderId").as[Long]
     val amount = (request.body \ "amount").as[BigDecimal]
 
@@ -34,21 +34,26 @@ object BidController extends Controller with Secured {
           case (Some(item), Some(bidder)) =>
             Bid.create(bidder, item, amount)
           case _ =>
-            Failure(new BidException(s"Unable to find item ID $itemId and/or bidder ID $bidderId"))
+            Future.failed(new BidException(s"Unable to find item ID $itemId and/or bidder ID $bidderId"))
         }
       }
-    } match {
-      case Success(bid) =>
+    } map {
+      case Some(bid) =>
         AppController.pushBidders()
         AppController.pushItems()
         Ok(s"Added bid for ${bid.item.itemNumber} ${bid.item.description} by ${bid.bidder.bidderNumber} ${bid.bidder.contact.name} for ${bid.amount}")
-      case Failure(e) =>
+      case None =>
+        val msg = s"Unable to create bid for item ID $itemId and bidder ID $bidderId"
+        logger.error(msg)
+        BadRequest(msg)
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to create bid", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def editBid(bidId: Long) = Action(parse.json) { implicit request =>
+  def editBid(bidId: Long) = Action.async(parse.json) { implicit request =>
     val bidderId = (request.body \ "bidderId").as[Long]
     val itemId = (request.body \ "itemId").as[Long]
     val amount = (request.body \ "amount").as[BigDecimal]
@@ -57,27 +62,37 @@ object BidController extends Controller with Secured {
       Bidder.get(bidderId) flatMap { bidderOpt =>
         (itemOpt, bidderOpt) match {
           case (Some(item), Some(bidder)) => Bid.edit(bidId, bidder, item, amount)
-          case _ => Failure(new BidException(s"Unable to find item ID $itemId and/or bidder ID $bidderId"))
+          case _ => Future.failed(new BidException(s"Unable to find item ID $itemId and/or bidder ID $bidderId"))
         }
       }
-    } match {
-      case Success(bid) =>
+    } map {
+      case Some(bid) =>
         AppController.pushBidders()
         AppController.pushItems()
         Ok(s"Edited bid for ${bid.item.itemNumber} ${bid.item.description} by ${bid.bidder.bidderNumber} ${bid.bidder.contact.name} for ${bid.amount}")
-      case Failure(e) =>
-        logger.error("Unable to edit winning bid", e)
+      case None =>
+        val msg = s"Unable to edit bid for item ID $itemId and bidder ID $bidderId"
+        logger.error(msg)
+        BadRequest(msg)
+    } recover {
+      case e @ Throwable =>
+        logger.error("Unable to edit bid", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def deleteBid(bidId: Long) = Action { implicit request =>
-    Bid.delete(bidId) match {
-      case Success(bid) =>
+  def deleteBid(bidId: Long) = Action.async { implicit request =>
+    Bid.delete(bidId) map {
+      case Some(bid) =>
         AppController.pushBidders()
         AppController.pushItems()
         Ok(s"Deleted winning bid for ${bid.item.itemNumber} ${bid.item.description} by ${bid.bidder.bidderNumber} ${bid.bidder.contact.name} for ${bid.amount}")
-      case Failure(e) =>
+      case None =>
+        val msg = s"Unable to find bid ID $bidId to delete"
+        logger.error(msg)
+        BadRequest(msg)
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to delete winning bid", e)
         BadRequest(e.getMessage)
     }

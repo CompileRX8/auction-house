@@ -1,14 +1,17 @@
 package models
 
-import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.duration._
+import actors.ItemsActor._
 import akka.pattern.ask
 import akka.util.Timeout
-import actors.ItemsActor._
+import persistence.BidsPersistence.bids
+import persistence.ItemsPersistence.items
+import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.json.Json
-import misc.Util
+
+import scala.concurrent.Future
+import scala.concurrent.duration._
 import scala.language.postfixOps
-import scala.util.{Failure, Try}
+import scala.util.Try
 
 case class ItemException(message: String, cause: Exception = null) extends Exception(message, cause)
 
@@ -16,53 +19,44 @@ case class ItemData(item: Item, bids: List[Bid])
 
 case class Item(id: Option[Long], event: Event, itemNumber: String, description: String, minbid: BigDecimal)
 
-object Item {
-  // extends ((Option[Long], Event, String, String, BigDecimal) => Item) {
+object Item extends ((Option[Long], Event, String, String, BigDecimal) => Item) {
   implicit val timeout = Timeout(3 seconds)
 
   implicit val itemFormat = Json.format[Item]
   implicit val bidFormat = Json.format[Bid]
   implicit val itemDataFormat = Json.format[ItemData]
 
-  def all() = Util.wait {
-    (itemsActor ? GetItems).mapTo[Try[List[Item]]]
-  }
+  def all(): Future[List[Item]] = items.all()
 
-  def get(id: Long) = Util.wait {
-    (itemsActor ? GetItem(id)).mapTo[Try[Option[Item]]]
-  }
+  def get(id: Long): Future[Option[Item]] = items.forId(id)
 
-  def create(eventId: Long, itemNumber: String, description: String, minbid: BigDecimal): Try[Item] =
+  def create(eventId: Long, itemNumber: String, description: String, minbid: BigDecimal): Future[Item] =
     Event.get(eventId) flatMap {
       case Some(event) =>
-        Util.wait {
-          (itemsActor ? Item(None, event, itemNumber, description, minbid)).mapTo[Try[Item]]
-        }
-      case None => Failure(new ItemException(s"Cannot find event ID $eventId to create item"))
+        items.create(Item(None, event, itemNumber, description, minbid))
+      case None =>
+        Future.failed(new ItemException(s"Cannot find event ID $eventId to create item"))
     }
 
-  def delete(id: Long) = Util.wait {
-    (itemsActor ? DeleteItem(id)).mapTo[Try[Item]]
-  }
+  def delete(id: Long) = items.delete(id)
 
-  def edit(id: Long, itemNumber: String, description: String, minbid: BigDecimal): Try[Item] =
+  def edit(id: Long, itemNumber: String, description: String, minbid: BigDecimal): Future[Option[Item]] =
     get(id) flatMap {
       case Some(item @ Item(Some(_), event, _, _, _)) =>
-        Util.wait {
-          (itemsActor ? EditItem(Item(Some(id), event, itemNumber, description, minbid))).mapTo[Try[Item]]
-        }
-      case None => Failure(new ItemException(s"Cannot find item ID $id to edit item"))
+        items.edit(Item(Some(id), event, itemNumber, description, minbid))
+      case None =>
+        Future.failed(new ItemException(s"Cannot find item ID $id to edit item"))
     }
 
-  def allByEvent(eventId: Long) = Util.wait {
-    (itemsActor ? ItemsForEvent(eventId)).mapTo[Try[List[Item]]]
-  }
+  def allByEvent(eventId: Long) = items.forEventId(eventId)
 
-  def currentItems(eventId: Long): Try[List[ItemData]] = {
-    Item.allByEvent(eventId) map { items =>
-      items map { item =>
-        ItemData(item, Bid.allByItem(item).getOrElse(List()))
-      }
+  def currentItems(eventId: Long): Future[List[ItemData]] = {
+    for {
+      items <- Item.allByEvent(eventId)
+      item <- items
+      bids <- Bid.allByItem(item.id.get)
+    } yield {
+      ItemData(item, bids)
     }
   }
 
@@ -75,53 +69,42 @@ case class BidException(message: String, cause: Exception = null) extends Except
 
 case class Bid(id: Option[Long], bidder: Bidder, item: Item, amount: BigDecimal)
 
-object Bid {
+object Bid extends ((Option[Long], Bidder, Item, BigDecimal) => Bid) {
+  implicit val timeout = Timeout(3 seconds)
 
+  implicit val bidderFormat = Json.format[Bidder]
+  implicit val itemFormat = Json.format[Item]
   implicit val bidFormat = Json.format[Bid]
 
-  def allByBidder(bidder: Bidder) = Util.wait {
-    (itemsActor ? BidsByBidder(bidder)).mapTo[Try[List[Bid]]]
-  }
+  def allByBidder(bidderId: Long) = bids.forBidderId(bidderId)
 
-  def allByItem(item: Item) = Util.wait {
-    (itemsActor ? BidsByItem(item)).mapTo[Try[List[Bid]]]
-  }
+  def allByItem(itemId: Long) = bids.forItemId(itemId)
 
-  def allByEvent(eventId: Long): Try[List[Bid]] =
+  def allByEvent(eventId: Long): Future[List[Bid]] =
     Item.allByEvent(eventId) flatMap { items =>
       val itemBidsLists = items map { item =>
-        allByItem(item)
+        allByItem(item.id.get)
       }
-      (Try(List[Bid]()) /: itemBidsLists) { (tryAllEventBids, tryItemBidsList) =>
-        tryItemBidsList flatMap { itemBidsList =>
-          tryAllEventBids map {
-            _ ++ itemBidsList
-          }
-        }
-      }
+      Future.reduce(itemBidsLists)(_ ++ _)
     }
 
-  def get(id: Long) = Util.wait {
-    (itemsActor ? GetBid(id)).mapTo[Try[Option[Bid]]]
-  }
+  def get(id: Long) = bids.forId(id)
 
   def create(bidder: Bidder, item: Item, amount: BigDecimal) =
-    Util.wait {
-      (itemsActor ? Bid(None, bidder, item, amount)).mapTo[Try[Bid]]
-    }
+    bids.create(Bid(None, bidder, item, amount))
 
   def edit(bidId: Long, bidder: Bidder, item: Item, amount: BigDecimal) =
-    Util.wait {
-      (itemsActor ? EditBid(bidId, bidder, item, amount)).mapTo[Try[Bid]]
+    get(bidId) flatMap {
+      case Some(b @ Bid(Some(_), _, _, _)) =>
+        bids.edit(Bid(Some(bidId), bidder, item, amount))
+      case None =>
+        Future.failed(new BidException(s"Unable to find bid Id $bidId to edit"))
     }
 
-  def delete(bidId: Long) =
-    Util.wait {
-      (itemsActor ? DeleteBid(bidId)).mapTo[Try[Bid]]
-    }
+  def delete(bidId: Long) = bids.delete(bidId)
 
-  def winningBids(item: Item): Try[List[Bid]] =
-    allByItem(item) map { bids =>
+  def winningBids(item: Item): Future[List[Bid]] =
+    allByItem(item.id.get) map { bids =>
       val sortedBids = bids.sortBy(_.amount).reverse
       sortedBids.headOption map {
         _.amount
@@ -133,15 +116,15 @@ object Bid {
       }
     }
 
-  def winningBids(eventId: Long): Try[Map[Item, List[Bid]]] =
-    Item.allByEvent(eventId) map { items =>
-      val itemWinningBidsMap = (Map[Item, Try[List[Bid]]]() /: items) { (m, item) =>
-        m + (item -> winningBids(item))
+  def winningBids(eventId: Long): Future[Map[Item, List[Bid]]] =
+    allByEvent(eventId) map { bids =>
+      (Map[Item, List[Bid]]() /: bids) { (m, bid) =>
+        val bidsList = m.getOrElse(bid.item, List[Bid]()).::(bid)
+        m + (bid.item -> bidsList)
       }
-      itemWinningBidsMap map { case (item, tryBids) => item -> tryBids.getOrElse(List()) }
     }
 
-  def winningBids(bidder: Bidder): Try[List[Bid]] = bidder match {
+  def winningBids(bidder: Bidder): Future[List[Bid]] = bidder match {
     case Bidder(Some(id), e@Event(Some(eventId), _, _), _, _) =>
       winningBids(eventId) map {
         _.values reduce {
@@ -150,11 +133,12 @@ object Bid {
           _.bidder.id.getOrElse(-1L) == id
         }
       }
-    case _ => Failure(new BidException(s"Unable to find winning bids without bidder ID and event ID"))
+    case _ =>
+      Future.failed(new BidException(s"Unable to find winning bids without bidder ID and event ID"))
   }
 
-  def totalByBidder(bidder: Bidder): Try[BigDecimal] =
-    winningBids(bidder) flatMap { bidsList =>
-      Try((BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount })
+  def totalByBidder(bidder: Bidder): Future[BigDecimal] =
+    winningBids(bidder) map { bidsList =>
+      (BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount }
     }
 }

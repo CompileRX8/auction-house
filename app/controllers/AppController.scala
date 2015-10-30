@@ -51,15 +51,15 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushBidders = Action { req =>
-    Bidder.currentBidders() match {
-      case Success(biddersData) =>
-        logger.debug(s"biddersData: $biddersData")
-        val jsonBiddersData = Json.toJson(biddersData)
-        logger.debug(s"jsonBiddersData: $jsonBiddersData")
-        biddersChannel.push(jsonBiddersData)
-        Ok
-      case Failure(e) =>
+  def pushBidders = Action.async { req =>
+    Bidder.currentBidders(eventId) map { biddersData =>
+      logger.debug(s"biddersData: $biddersData")
+      val jsonBiddersData = Json.toJson(biddersData)
+      logger.debug(s"jsonBiddersData: $jsonBiddersData")
+      biddersChannel.push(jsonBiddersData)
+      Ok
+    } recover {
+      case e @ Throwable =>
         logger.error("Failed to push bidders", e)
         BadRequest(e.getMessage)
     }
@@ -76,15 +76,15 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushItems = Action { req =>
-    Item.currentItems() match {
-      case Success(itemsData) =>
-        logger.debug(s"itemsData: $itemsData")
-        val jsonItemsData = Json.toJson(itemsData)
-        logger.debug(s"jsonItemsData: $jsonItemsData")
-        itemsChannel.push(jsonItemsData)
-        Ok
-      case Failure(e) =>
+  def pushItems = Action.async { req =>
+    Item.currentItems(eventId) map { itemsData =>
+      logger.debug(s"itemsData: $itemsData")
+      val jsonItemsData = Json.toJson(itemsData)
+      logger.debug(s"jsonItemsData: $jsonItemsData")
+      itemsChannel.push(jsonItemsData)
+      Ok
+    } recover {
+      case e @ Throwable =>
         logger.error("Failed to push items", e)
         BadRequest(e.getMessage)
     }
@@ -100,15 +100,15 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushOrganizations = Action { req =>
-    Organization.currentOrganizations() match {
-      case Success(orgsData) =>
-        logger.debug(s"orgsData: $orgsData")
-        val jsonOrgsData = Json.toJson(orgsData)
-        logger.debug(s"jsonOrgsData: $jsonOrgsData")
-        organizationsChannel.push(jsonOrgsData)
-        Ok
-      case Failure(e) =>
+  def pushOrganizations = Action.async { req =>
+    Organization.currentOrganizations() map { orgsData =>
+      logger.debug(s"orgsData: $orgsData")
+      val jsonOrgsData = Json.toJson(orgsData)
+      logger.debug(s"jsonOrgsData: $jsonOrgsData")
+      organizationsChannel.push(jsonOrgsData)
+      Ok
+    } recover {
+      case e @ Throwable =>
         logger.error("Failed to push organizations", e)
         BadRequest(e.getMessage)
     }

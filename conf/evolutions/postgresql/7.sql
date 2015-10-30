@@ -9,4 +9,8 @@ CREATE TABLE CONTACT (
   PHONE           TEXT,
   EMAIL           TEXT,
   UNIQUE (ORGANIZATION_ID, NAME)
-)
+);
+
+# --- !Downs
+
+DROP TABLE CONTACT;

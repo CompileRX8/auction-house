@@ -1,26 +1,49 @@
 package persistence
 
-import akka.actor.ActorRef
-import models.{Organization, Event}
+import _root_.slick.driver.PostgresDriver.api._
+import models.Organization
 
-import scala.util.Try
+import scala.concurrent.Future
 
-trait OrganizationsPersistence {
+object OrganizationsPersistence extends SlickPersistence {
 
-  def load(organizationsActor: ActorRef): Try[Boolean]
+  class Organizations(tag: Tag) extends Table[Organization](tag, "ORGANIZATION") {
+    def id = column[Long]("ID", O.PrimaryKey, O.AutoInc)
 
-  def create(organization: Organization): Try[Organization]
+    def name = column[String]("NAME")
 
-  def create(event: Event): Try[Event]
+    def * = (id.?, name) <>(Organization.tupled, Organization.unapply)
+  }
 
-  def delete(organization: Organization): Try[Organization]
+  object organizations extends TableQuery(new Organizations(_)) {
+    private val findById = this.findBy(_.id)
+    private val findByName = this.findBy(_.name)
 
-  def delete(event: Event): Try[Event]
+    def all() = db.run(this.result.map(mapSeq { _ }))
 
-  def edit(organization: Organization): Try[Organization]
+    def forId(id: Long) = db.run(findById(id).result.headOption)
 
-  def edit(event: Event): Try[Event]
+    def forName(name: String) = db.run(findByName(name).result.headOption)
 
-  def eventsByOrganization(organization: Organization): Try[List[Event]]
+    def create(org: Organization): Future[Organization] = {
+      db.run(
+        this returning map {
+          _.id
+        } into {
+          (newOrg, id) => newOrg.copy(id = Some(id))
+        } += org
+      )
+    }
+
+    def delete(id: Long): Future[Option[Organization]] =
+      deleteHandler(id, forId) {
+        findById(id).delete
+      }
+
+    def edit(org: Organization): Future[Option[Organization]] =
+      editHandler(org.id, org, forId) { id =>
+        findById(id).update(org)
+      }
+  }
 
 }

@@ -15,48 +15,58 @@ object OrganizationController extends Controller with Secured {
   implicit val eventFormat = Json.format[Event]
   implicit val organizationDataFormat = Json.format[OrganizationData]
 
-  def organizations = Action { implicit request =>
-    Organization.currentOrganizations() match {
-      case Success(orgs) =>
-        Ok(Json.toJson(orgs))
-      case Failure(e) =>
+  def organizations = Action.async { implicit request =>
+    Organization.currentOrganizations() map { orgs =>
+      Ok(Json.toJson(orgs))
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to send organizations", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def newOrganization = Action(parse.json) { implicit request =>
+  def newOrganization = Action.async(parse.json) { implicit request =>
     val name = (request.body \ "name").as[String]
 
-    Organization.create(name) match {
-      case Success(org) =>
-        AppController.pushOrganizations()
-        Ok(s"Created organization $name")
-      case Failure(e) =>
+    Organization.create(name) map { org =>
+      AppController.pushOrganizations()
+      Ok(s"Created organization $name")
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to create organization", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def editOrganization(organizationId: Long) = Action(parse.json) { implicit request =>
+  def editOrganization(organizationId: Long) = Action.async(parse.json) { implicit request =>
     val name = (request.body \ "name").as[String]
 
-    Organization.edit(organizationId, name) match {
-      case Success(org) =>
+    Organization.edit(organizationId, name) map {
+      case Some(org) =>
         AppController.pushOrganizations()
         Ok(s"Edited organization $name")
-      case Failure(e) =>
+      case None =>
+        val msg = s"Unable to find organization ID $organizationId to edit"
+        logger.error(msg)
+        BadRequest(msg)
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to edit organization", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def deleteOrganization(organizationId: Long) = Action { implicit request =>
-    Organization.delete(organizationId) match {
-      case Success(org) =>
+  def deleteOrganization(organizationId: Long) = Action.async { implicit request =>
+    Organization.delete(organizationId) map {
+      case Some(org) =>
         AppController.pushOrganizations()
         Ok(s"Deleted organization ${org.name}")
-      case Failure(e) =>
+      case None =>
+        val msg = s"Unable to find organization ID $organizationId to delete"
+        logger.error(msg)
+        BadRequest(msg)
+    } recover {
+      case e @ Throwable =>
         logger.error("Unable to delete organization", e)
         BadRequest(e.getMessage)
     }

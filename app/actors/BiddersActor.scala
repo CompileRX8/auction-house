@@ -1,15 +1,14 @@
 package actors
 
-import akka.actor.{Props, Actor}
-import models.{BidderException, Item, Payment, Bidder}
-import misc.Util
-import persistence.anorm.{BiddersPersistenceAnorm, ItemsPersistenceAnorm}
-import scala.concurrent.Await
+import akka.actor.{Actor, Props}
+import models.{Bidder, BidderException}
+import persistence.BiddersPersistence.bidders
 import play.api.Play.current
-import play.api.libs.concurrent.Execution.Implicits._
 import play.api.libs.concurrent.Akka
+import play.api.libs.concurrent.Execution.Implicits._
 
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.Future
+import scala.util.{Failure, Success}
 
 object BiddersActor {
   case object LoadFromDataSource
@@ -19,86 +18,56 @@ object BiddersActor {
   case class DeleteBidder(id: Long)
   case class EditBidder(bidder: Bidder)
 
-  case class Payments(bidder: Bidder)
-
   case class BiddersForEvent(eventId: Long)
 
   def props = Props(classOf[BiddersActor])
 
   val biddersActor = Akka.system.actorOf(BiddersActor.props)
-
-  val biddersPersistence = BiddersPersistenceAnorm
-  val itemsPersistence = ItemsPersistenceAnorm
 }
 
 class BiddersActor extends Actor {
   import BiddersActor._
 
-  private def findBidder(bidder: Bidder): Try[Option[Bidder]] = bidder.id match {
+  private def findBidder(bidder: Bidder): Future[Option[Bidder]] = bidder.id match {
     case Some(id) => findBidder(id)
-    case None => findBidder(bidder.contact.name)
+    case None => findBidder(bidder.event.id.get, bidder.contact.name)
   }
 
-  private def findBidder(id: Long): Try[Option[Bidder]] = biddersPersistence.bidderById(id)
+  private def findBidder(id: Long): Future[Option[Bidder]] = bidders.forId(id)
 
-  private def findBidder(name: String): Try[Option[Bidder]] = biddersPersistence.bidderByName(name)
+  private def findBidder(eventId: Long, name: String): Future[Option[Bidder]] = bidders.forEventIdAndName(eventId, name)
 
   override def receive = {
     case LoadFromDataSource =>
-      sender ! biddersPersistence.load(self)
+      //sender ! biddersPersistence.load(self)
 
     case GetBidders =>
-      sender ! biddersPersistence.sortedBidders
+      bidders.all onComplete { sender ! _ }
 
     case GetBidder(id) =>
-      sender ! findBidder(id)
+      bidders.forId(id) onComplete { sender ! _ }
 
     case newBidder @ Bidder(None, event, bidderNumber, contact) =>
-      sender ! findBidder(contact.name).flatMap {
-        case Some(bidder) => Failure(new BidderException(s"Bidder name ${contact.name} already exists as Bidder Number ${bidder.bidderNumber}"))
-        case None => biddersPersistence.create(newBidder)
+      findBidder(newBidder) andThen {
+        case Success(Some(bidder)) =>
+          sender ! Failure(new BidderException(s"Bidder ${bidder.contact.name} at event ID ${event.id.get} already exists as Bidder Number ${bidder.bidderNumber}"))
+        case Success(None) =>
+          bidders.create(newBidder) onComplete { sender ! _ }
+        case f @ Failure(_) => sender ! f
       }
 
     case bidder @ Bidder(idOpt @ Some(id), event, bidderNumber, contact) =>
-    // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
     case DeleteBidder(id) =>
-      sender ! findBidder(id).flatMap {
-        case Some(bidder) =>
-          itemsPersistence.winningBidsByBidder(bidder).flatMap {
-            case Nil =>
-              biddersPersistence.paymentsByBidder(bidder).flatMap {
-                case Nil =>
-                  biddersPersistence.delete(bidder)
-                case payments =>
-                  Failure(new BidderException(s"Cannot delete bidder ${bidder.contact.name} with payments"))
-              }
-            case winningBids =>
-              Failure(new BidderException(s"Cannot delete bidder ${bidder.contact.name} with winning bids"))
-          }
-        case None =>
-          Failure(new BidderException(s"Cannot find bidder ID $id"))
-      }
+      bidders.delete(id) onComplete { sender ! _ }
 
-    case EditBidder(bidder @ Bidder(idOpt @ Some(id), name)) =>
-      sender ! biddersPersistence.edit(bidder)
+    case EditBidder(bidder @ Bidder(idOpt @ Some(id), event, bidderNumber, contact)) =>
+      bidders.edit(bidder) onComplete { sender ! _ }
 
-    case EditBidder(bidder @ Bidder(None, name)) =>
+    case EditBidder(bidder @ Bidder(None, event, bidderNumber, contact)) =>
       sender ! Failure(new BidderException(s"Cannot edit bidder without bidder ID"))
 
-    case newPayment @ Payment(None, bidder, description, amount) =>
-      sender ! findBidder(bidder).flatMap {
-        case Some(bidderInfo) => biddersPersistence.create(newPayment)
-        case None => Failure(new BidderException(s"Cannot find bidder $bidder"))
-      }
-
-    case p @ Payment(idOpt @ Some(id), bidder, description, amount) =>
-    // Do nothing since not maintaining our own Set[BidderInfo] anymore
-
-    case Payments(bidder) =>
-      sender ! biddersPersistence.paymentsByBidder(bidder)
-
-    case _ =>
+    case msg @ _ => sender ! Failure(new BidderException(s"Unknown message: $msg"))
   }
 
 }
