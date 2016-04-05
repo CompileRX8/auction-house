@@ -12,12 +12,12 @@ import models.{Item, Bidder}
 object Global extends GlobalSettings {
 
   override def onStart(app: Application) = {
-    val loadSuccessful = Bidder.loadFromDataSource flatMap { bidderSuccess =>
-      Item.loadFromDataSource map { itemSuccess =>
-        bidderSuccess flatMap { _ => itemSuccess }
-      }
-    }
-    Await.result(loadSuccessful, Util.defaultAwaitTimeout)
+//    val loadSuccessful = Bidder.loadFromDataSource flatMap { bidderSuccess =>
+//      Item.loadFromDataSource map { itemSuccess =>
+//        bidderSuccess flatMap { _ => itemSuccess }
+//      }
+//    }
+//    Await.result(loadSuccessful, Util.defaultAwaitTimeout)
 
 //    if(app.mode != Mode.Prod) {
       // Just need to reference this

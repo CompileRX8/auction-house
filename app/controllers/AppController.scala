@@ -1,20 +1,21 @@
 package controllers
 
-import play.api.mvc._
-import play.api.mvc.Results._
-import play.api.libs.json._
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.iteratee.{Enumeratee, Concurrent}
-import play.twirl.api.JavaScript
+import javax.inject.Inject
 
-import scala.util.{Failure, Success, Random}
-import play.api.{Logger, Routes}
-import play.api.libs.EventSource
 import models._
+import play.api.Logger
+import play.api.libs.EventSource
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
+import play.api.libs.iteratee.{Concurrent, Enumeratee}
+import play.api.libs.json._
+import play.api.mvc.Results._
+import play.api.mvc._
 
-object AppController extends Controller with Secured{
+import scala.util.Random
 
-  val logger = Logger(AppController.getClass)
+class AppController @Inject() extends Controller with Secured{
+
+  val logger = Logger(getClass)
 
   def index = withAuth {
     username => implicit request =>
@@ -51,7 +52,8 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushBidders = Action.async { req =>
+  def pushBidders = Action.async { implicit request =>
+    val eventId: Long = request.session.get("eventId").map(Long.unbox(_)).getOrElse(0L)
     Bidder.currentBidders(eventId) map { biddersData =>
       logger.debug(s"biddersData: $biddersData")
       val jsonBiddersData = Json.toJson(biddersData)
@@ -59,7 +61,7 @@ object AppController extends Controller with Secured{
       biddersChannel.push(jsonBiddersData)
       Ok
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Failed to push bidders", e)
         BadRequest(e.getMessage)
     }
@@ -76,7 +78,8 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushItems = Action.async { req =>
+  def pushItems = Action.async { implicit request =>
+    val eventId: Long = request.session.get("eventId").map(Long.unbox(_)).getOrElse(0L)
     Item.currentItems(eventId) map { itemsData =>
       logger.debug(s"itemsData: $itemsData")
       val jsonItemsData = Json.toJson(itemsData)
@@ -84,7 +87,7 @@ object AppController extends Controller with Secured{
       itemsChannel.push(jsonItemsData)
       Ok
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Failed to push items", e)
         BadRequest(e.getMessage)
     }
@@ -108,25 +111,25 @@ object AppController extends Controller with Secured{
       organizationsChannel.push(jsonOrgsData)
       Ok
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Failed to push organizations", e)
         BadRequest(e.getMessage)
     }
   }
 
-  def javascriptRoutes = Action {
-    implicit request =>
-      Ok(
-        Routes.javascriptRouter("jsRoutes")(
-          routes.javascript.AppController.login,
-          routes.javascript.AppController.logout,
-          routes.javascript.BidderController.newBidder,
-          routes.javascript.ItemController.newItem,
-          routes.javascript.ItemController.addWinningBid,
-          routes.javascript.PaymentController.newPayment
-        )
-      ).as(JAVASCRIPT)
-  }
+//  def javascriptRoutes = Action {
+//    implicit request =>
+//      Ok(
+//        Routes.javascriptRouter("jsRoutes")(
+//          routes.javascript.AppController.login,
+//          routes.javascript.AppController.logout,
+//          routes.javascript.BidderController.newBidder,
+//          routes.javascript.ItemController.newItem,
+//          routes.javascript.ItemController.addWinningBid,
+//          routes.javascript.PaymentController.newPayment
+//        )
+//      ).as(JAVASCRIPT)
+//  }
 
   private var tokens = Map[String, JsValue]()
 

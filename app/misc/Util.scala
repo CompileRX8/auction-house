@@ -9,7 +9,7 @@ import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
 
 object Util {
-
+/*
   def singleton[T](name: String)(implicit man: Manifest[T]): T =
     Class.forName(name + "$").getField("MODULE$").get(man.runtimeClass).asInstanceOf[T]
 
@@ -39,5 +39,5 @@ object Util {
   def wait[T](awaitable: Awaitable[T]): T = {
     Await.result(awaitable, Util.defaultAwaitTimeout)
   }
-
+*/
 }

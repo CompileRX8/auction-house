@@ -1,14 +1,15 @@
 package controllers
 
-import models.{OrganizationData, Event, Contact, Organization}
+import javax.inject.Inject
+
+import models.{Contact, Event, Organization, OrganizationData}
 import play.api.Logger
+import play.api.libs.concurrent.Execution.Implicits.defaultContext
 import play.api.libs.json.Json
 import play.api.mvc.{Action, Controller}
 
-import scala.util.{Failure, Success}
-
-object OrganizationController extends Controller with Secured {
-  val logger = Logger(OrganizationController.getClass)
+class OrganizationController @Inject() (appController: AppController) extends Controller with Secured {
+  val logger = Logger(getClass)
 
   implicit val organizationFormat = Json.format[Organization]
   implicit val contactFormat = Json.format[Contact]
@@ -19,7 +20,7 @@ object OrganizationController extends Controller with Secured {
     Organization.currentOrganizations() map { orgs =>
       Ok(Json.toJson(orgs))
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Unable to send organizations", e)
         BadRequest(e.getMessage)
     }
@@ -29,10 +30,10 @@ object OrganizationController extends Controller with Secured {
     val name = (request.body \ "name").as[String]
 
     Organization.create(name) map { org =>
-      AppController.pushOrganizations()
+      appController.pushOrganizations()
       Ok(s"Created organization $name")
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Unable to create organization", e)
         BadRequest(e.getMessage)
     }
@@ -43,14 +44,14 @@ object OrganizationController extends Controller with Secured {
 
     Organization.edit(organizationId, name) map {
       case Some(org) =>
-        AppController.pushOrganizations()
+        appController.pushOrganizations()
         Ok(s"Edited organization $name")
       case None =>
         val msg = s"Unable to find organization ID $organizationId to edit"
         logger.error(msg)
         BadRequest(msg)
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Unable to edit organization", e)
         BadRequest(e.getMessage)
     }
@@ -59,14 +60,14 @@ object OrganizationController extends Controller with Secured {
   def deleteOrganization(organizationId: Long) = Action.async { implicit request =>
     Organization.delete(organizationId) map {
       case Some(org) =>
-        AppController.pushOrganizations()
+        appController.pushOrganizations()
         Ok(s"Deleted organization ${org.name}")
       case None =>
         val msg = s"Unable to find organization ID $organizationId to delete"
         logger.error(msg)
         BadRequest(msg)
     } recover {
-      case e @ Throwable =>
+      case e: Throwable =>
         logger.error("Unable to delete organization", e)
         BadRequest(e.getMessage)
     }
