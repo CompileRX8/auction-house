@@ -1,12 +1,3 @@
-import sbt._
-import Keys._
-import play.Play.autoImport._
-import com.typesafe.sbt.coffeescript.SbtCoffeeScript.autoImport._
-import com.typesafe.sbt.less.SbtLess.autoImport._
-import com.typesafe.sbt.web.SbtWeb.autoImport._
-import play.PlayScala
-import com.typesafe.sbt.web.SbtWeb
-
 name := "AuctionHouse"
 
 version := "0.7-SNAPSHOT"
@@ -15,7 +6,6 @@ scalaVersion := "2.11.5"
 
 libraryDependencies ++= Seq(
   jdbc
-  ,anorm
   ,"com.typesafe.play" %% "play-slick" % "0.8.1"
   ,"org.webjars" %% "webjars-play" % "2.3.0"
   ,"org.webjars" % "angularjs" % "1.3.15"
@@ -24,9 +14,7 @@ libraryDependencies ++= Seq(
   ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
 )
 
-resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots"
-
-resolvers += Resolver.url("Typesafe Ivy", url("http://repo.typesafe.com/typesafe/ivy-snapshots"))(Resolver.ivyStylePatterns)
+herokuAppName in Compile := "cccauction2016"
 
 CoffeeScriptKeys.bare := true
 
