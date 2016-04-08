@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   ,"org.webjars" % "angularjs" % "1.3.15"
   ,"org.webjars" % "bootstrap" % "3.3.4"
   ,"com.typesafe.akka" %% "akka-actor" % "2.3.9"
-//  ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
+  ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
 )
 
 CoffeeScriptKeys.bare := true
