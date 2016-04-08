@@ -24,6 +24,10 @@ libraryDependencies ++= Seq(
   ,"org.postgresql" % "postgresql" % "9.2-1004-jdbc4"
 )
 
+resolvers += "Sonatype OSS Snapshots" at "http://oss.sonatype.org/content/repositories/snapshots"
+
+resolvers += Resolver.url("Typesafe Ivy", url("http://repo.typesafe.com/typesafe/ivy-snapshots"))(Resolver.ivyStylePatterns)
+
 CoffeeScriptKeys.bare := true
 
 LessKeys.strictMath in Assets := true
