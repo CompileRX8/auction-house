@@ -1,27 +1,31 @@
 package misc
 
-import actors.AuctionDemoActor
+import javax.inject.{Inject, Named, Singleton}
+
+import akka.actor.ActorRef
+import models.{BidderService, ItemService}
 import play.api._
-import play.api.mvc._
-import play.api.mvc.Results._
 import play.api.libs.concurrent.Execution.Implicits._
+import play.api.mvc.Results._
+import play.api.mvc._
+
 import scala.concurrent.{Await, Future}
-import models.{Item, Bidder}
 
-
-object Global extends GlobalSettings {
+@Singleton
+class Global @Inject()(bidderService: BidderService, itemService: ItemService, @Named("auction-demo-actor") auctionDemoActor: ActorRef) extends GlobalSettings {
 
   override def onStart(app: Application) = {
-    val loadSuccessful = Bidder.loadFromDataSource flatMap { bidderSuccess =>
-      Item.loadFromDataSource map { itemSuccess =>
-        bidderSuccess && itemSuccess
+    val loadSuccessful = bidderService.loadFromDataSource flatMap { triedBidder =>
+      itemService.loadFromDataSource map { triedItem =>
+        triedBidder flatMap { bidderSuccess =>
+          triedItem map { itemSuccess => bidderSuccess && itemSuccess }
+        }
       }
     }
     Await.result(loadSuccessful, Util.defaultAwaitTimeout)
 
 //    if(app.mode != Mode.Prod) {
-      // Just need to reference this
-//      val auctionDemoActor = AuctionDemoActor.auctionDemoActor
+//val actionSchedule = Akka.system.scheduler.schedule(10 seconds, 10 seconds, auctionDemoActor, AuctionAction)
 //    }
   }
 

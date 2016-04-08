@@ -1,20 +1,26 @@
 package controllers
 
+import javax.inject.{Inject, Singleton}
+
 import play.api.mvc._
 import play.api.mvc.Results._
 import play.api.libs.json._
 import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.iteratee.{Enumeratee, Concurrent}
+import play.api.libs.iteratee.{Concurrent, Enumeratee}
 import play.twirl.api.JavaScript
 
-import scala.util.{Failure, Success, Random}
+import scala.util.{Failure, Random, Success}
 import play.api.{Logger, Routes}
 import play.api.libs.EventSource
 import models._
+import play.api.routing.{JavaScriptReverseRouter, Router}
 
-object AppController extends Controller with Secured{
+import scala.concurrent.Future
 
-  val logger = Logger(AppController.getClass)
+@Singleton
+class AppController @Inject()(bidderService: BidderService, itemService: ItemService) extends Controller with Secured{
+
+  val logger = Logger(classOf[AppController])
 
   def index = withAuth {
     username => implicit request =>
@@ -28,11 +34,11 @@ object AppController extends Controller with Secured{
   def connDeathWatch(addr: String): Enumeratee[JsValue, JsValue] =
     Enumeratee.onIterateeDone{ () => println(addr + " - SSE disconnected") }
 
+  implicit val itemFormat = Json.format[Item]
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val bidderDataFormat = Json.format[BidderData]
-  implicit val itemFormat = Json.format[Item]
   implicit val itemDataFormat = Json.format[ItemData]
 
   /** Controller action serving bidders */
@@ -46,18 +52,24 @@ object AppController extends Controller with Secured{
     ).as("text/event-stream")
   }
 
-  def pushBidders = Action { req =>
-    Bidder.currentBidders() match {
-      case Success(biddersData) =>
-        logger.debug(s"biddersData: $biddersData")
-        val jsonBiddersData = Json.toJson(biddersData)
-        logger.debug(s"jsonBiddersData: $jsonBiddersData")
-        biddersChannel.push(jsonBiddersData)
-        Ok
-      case Failure(e) =>
-        logger.error("Failed to push bidders", e)
-        BadRequest(e.getMessage)
+  def pushBidders = Action.async { req =>
+    val success: (List[BidderData]) => Future[Result] = { (biddersData) =>
+      logger.debug(s"biddersData: $biddersData")
+      val jsonBiddersData = Json.toJson(biddersData)
+      logger.debug(s"jsonBiddersData: $jsonBiddersData")
+      biddersChannel.push(jsonBiddersData)
+      Future { Ok }
     }
+
+    val failure: (Throwable) => Future[Result] = { (e) =>
+      logger.error("Failed to push bidders", e)
+      Future { BadRequest(e.getMessage) }
+    }
+    bidderService.currentBidders() onComplete {
+      case biddersData => success(biddersData)
+      case Failure(e) => failure(e)
+    }
+    Future { Ok }
   }
 
   /** Controller action serving items */
@@ -72,7 +84,7 @@ object AppController extends Controller with Secured{
   }
 
   def pushItems = Action { req =>
-    Item.currentItems() match {
+    itemService.currentItems() match {
       case Success(itemsData) =>
         logger.debug(s"itemsData: $itemsData")
         val jsonItemsData = Json.toJson(itemsData)
@@ -88,7 +100,7 @@ object AppController extends Controller with Secured{
   def javascriptRoutes = Action {
     implicit request =>
       Ok(
-        Routes.javascriptRouter("jsRoutes")(
+        JavaScriptReverseRouter("jsRoutes")(
           routes.javascript.AppController.login,
           routes.javascript.AppController.logout,
           routes.javascript.BidderController.newBidder,
@@ -103,7 +115,8 @@ object AppController extends Controller with Secured{
 
   /**
    * Log-in a user. Pass the credentials as JSON body.
-   * @return The token needed for subsequent requests
+    *
+    * @return The token needed for subsequent requests
    */
   def login() = Action(parse.json) { implicit request =>
     (request.session.get(Security.username) flatMap { sessionToken: String =>

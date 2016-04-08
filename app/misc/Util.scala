@@ -1,11 +1,10 @@
 package misc
 
-import java.sql.{Timestamp, Time, Date}
+import java.sql.{Date, Time, Timestamp}
 import java.util.Calendar
-import play.api.db.DB
-import play.api.Play.current
-import scala.concurrent.duration.Duration
 import java.util.concurrent.TimeUnit
+
+import scala.concurrent.duration.Duration
 
 object Util {
 
@@ -25,7 +24,7 @@ object Util {
 
   def addZero(value: Long) = 
      if(value < 10)
-        s"0${value}"
+        s"0$value"
       else
         value
 

@@ -1,15 +1,18 @@
 package actors
 
+import javax.inject.{Inject, Named}
+
 import play.api.libs.concurrent.Execution.Implicits._
+
 import scala.language.postfixOps
 import scala.concurrent.duration._
-import akka.actor.{ActorLogging, Actor, Props}
+import akka.actor.{Actor, ActorLogging, ActorRef, Props}
 import akka.util.Timeout
 import models._
 import play.api.libs.concurrent.Akka
 import play.api.Play.current
 
-import scala.util.{Failure, Success, Random}
+import scala.util.{Failure, Random, Success}
 
 object AuctionDemoActor {
 
@@ -19,14 +22,12 @@ object AuctionDemoActor {
   case object NewWinningBid
   case object NewPayment
 
-  def props = Props(classOf[AuctionDemoActor])
+  def props = Props[AuctionDemoActor]
 
-  val auctionDemoActor = Akka.system.actorOf(AuctionDemoActor.props)
-
-  val actionSchedule = Akka.system.scheduler.schedule(10 seconds, 10 seconds, auctionDemoActor, AuctionAction)
+//  val auctionDemoActor = Akka.system.actorOf(AuctionDemoActor.props)
 }
 
-class AuctionDemoActor extends Actor with ActorLogging {
+class AuctionDemoActor @Inject()(bidderService: BidderService, itemService: ItemService) extends Actor with ActorLogging {
   import AuctionDemoActor._
 
   implicit val timeout = Timeout(3 seconds)
@@ -36,8 +37,8 @@ class AuctionDemoActor extends Actor with ActorLogging {
   var bidderData: List[BidderData] = List.empty
   var itemData: List[ItemData] = List.empty
 
-  Range(0, 10) foreach { _ => self ! NewBidder }
-  Range(0, 30) foreach { _ => self ! NewItem }
+//  Range(0, 10) foreach { _ => self ! NewBidder }
+//  Range(0, 30) foreach { _ => self ! NewItem }
 
   override def receive = {
     case AuctionAction =>
@@ -56,9 +57,9 @@ class AuctionDemoActor extends Actor with ActorLogging {
     case NewBidder =>
       Names.nextBidder() map { newBidder =>
         log.debug("Adding bidder: {}", newBidder)
-        Bidder.create(newBidder) match {
+        bidderService.create(newBidder) match {
           case Success(bidder) =>
-            bidderData = Bidder.currentBidders().getOrElse(List())
+            bidderData = bidderService.currentBidders().getOrElse(List())
             log.debug("Added bidder: {}  Bidder Data size: {}", bidder, bidderData.size)
           case Failure(e) =>
             log.warning(s"Unable to add bidder: ${e.getMessage}")
@@ -68,9 +69,9 @@ class AuctionDemoActor extends Actor with ActorLogging {
     case NewItem =>
       Items.nextItem() map { newItem =>
         log.debug("Adding item: {}", newItem)
-        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5, newItem._6) match {
+        itemService.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5, newItem._6) match {
           case Success(item) =>
-            itemData = Item.currentItems().getOrElse(List())
+            itemData = itemService.currentItems().getOrElse(List())
             log.debug("Added item: {}  Item Data size: {}", item, itemData.size)
           case Failure(e) =>
             log.warning(s"Unable to add item: ${e.getMessage}")
@@ -78,13 +79,13 @@ class AuctionDemoActor extends Actor with ActorLogging {
       }
 
     case NewPayment =>
-      if(bidderData.size == 0) {
-        bidderData = Bidder.currentBidders().get
+      if(bidderData.isEmpty) {
+        bidderData = bidderService.currentBidders().get
       }
       val bidderIdx = random.nextInt(bidderData.size)
       val bidder = bidderData(bidderIdx)
       val bidderId = bidder.bidder.id.get
-      Bidder.totalOwed(bidderId) match {
+      bidderService.totalOwed(bidderId) match {
         case Success(amount) if amount > 0 =>
           val description = random.nextInt(3) match {
             case 0 => "Cash"
@@ -92,9 +93,9 @@ class AuctionDemoActor extends Actor with ActorLogging {
             case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
           }
           log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
-          Bidder.addPayment(bidderId, description, amount) match {
+          bidderService.addPayment(bidderId, description, amount) match {
             case Success(payment) =>
-              bidderData = Bidder.currentBidders().get
+              bidderData = bidderService.currentBidders().get
               log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", payment.bidder, payment.amount, payment.description, bidderData.size)
             case Failure(e) =>
               log.warning(s"Unable to add payment: ${e.getMessage}")
@@ -105,9 +106,9 @@ class AuctionDemoActor extends Actor with ActorLogging {
       }
 
     case NewWinningBid =>
-      if(bidderData.size == 0 || itemData.size == 0) {
-        bidderData = Bidder.currentBidders().get
-        itemData = Item.currentItems().get
+      if(bidderData.isEmpty || itemData.isEmpty) {
+        bidderData = bidderService.currentBidders().get
+        itemData = itemService.currentItems().get
       }
       val bidderIdx = random.nextInt(bidderData.size)
       val bidder = bidderData(bidderIdx)
@@ -115,9 +116,9 @@ class AuctionDemoActor extends Actor with ActorLogging {
       val item = itemData(itemIdx)
       val amount = item.item.minbid + random.nextInt(300)
       log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
-      Item.addWinningBid(bidder.bidder, item.item, amount) match {
+      itemService.addWinningBid(bidder.bidder, item.item, amount) match {
         case Success(winningBid) =>
-          itemData = Item.currentItems().get
+          itemData = itemService.currentItems().get
           log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", winningBid.bidder, winningBid.item, winningBid.amount, itemData.size)
         case Failure(e) =>
           log.warning(s"Unable to add winning bid: ${e.getMessage}")
@@ -129,7 +130,7 @@ object Names {
   val rawNames = "Smith Johnson Williams Jones Brown Davis Miller Wilson Moore Taylor Anderson Thomas Jackson White Harris Martin Thompson Garcia Martinez Robinson Clark Rodriguez Lewis Lee Walker Hall Allen Young Hernandez King Wright Lopez Hill Scott Green Adams Baker Gonzalez Nelson Carter Mitchell Perez Roberts Turner Phillips Campbell Parker Evans Edwards Collins Stewart Sanchez Morris Rogers Reed Cook Morgan Bell Murphy Bailey Rivera Cooper Richardson Cox Howard Ward Torres Peterson Gray Ramirez James Watson Brooks Kelly Sanders Price Bennett Wood Barnes Ross Henderson Coleman Jenkins Perry Powell Long Patterson Hughes Flores Washington Butler Simmons Foster Gonzales Bryant Alexander Russell Griffin Diaz Hayes Myers Ford Hamilton Graham Sullivan Wallace Woods Cole West Jordan Owens Reynolds Fisher Ellis Harrison Gibson Mcdonald Cruz Marshall Ortiz Gomez Murray Freeman Wells Webb Simpson Stevens Tucker Porter Hunter Hicks Crawford Henry Boyd Mason Morales Kennedy Warren Dixon Ramos Reyes Burns Gordon Shaw Holmes Rice Robertson Hunt Black Daniels Palmer Mills Nichols Grant Knight Ferguson Rose Stone Hawkins Dunn Perkins Hudson Spencer Gardner Stephens Payne Pierce Berry Matthews Arnold Wagner Willis Ray Watkins Olson Carroll Duncan Snyder Hart Cunningham Bradley Lane Andrews Ruiz Harper Fox Riley Armstrong Carpenter Weaver Greene Lawrence Elliott Chavez Sims Austin Peters Kelley Franklin Lawson Fields Gutierrez Ryan Schmidt Carr Vasquez Castillo Wheeler Chapman Oliver Montgomery Richards Williamson Johnston Banks Meyer Bishop McCoy Howell Alvarez Morrison Hansen Fernandez Garza Harvey Little Burton Stanley Nguyen George Jacobs Reid Kim Fuller Lynch Dean Gilbert Garrett Romero Welch Larson Frazier Burke Hanson Day Mendoza Moreno Bowman Medina Fowler Brewer Hoffman Carlson Silva Pearson Holland Douglas Fleming Jensen Vargas Byrd Davidson Hopkins May Terry Herrera Wade Soto Walters Curtis Neal Caldwell Lowe Jennings Barnett Graves Jimenez Horton Shelton Barrett O'Brien Castro Sutton Gregory McKinney Lucas Miles Craig Rodriquez Chambers Holt Lambert Fletcher Watts Bates Hale Rhodes Pena Beck Newman Haynes McDaniel Mendez Bush Vaughn Parks Dawson Santiago Norris Hardy Love Steele Curry Powers Schultz Barker Guzman Page Munoz Ball Keller Chandler Weber Leonard Walsh Lyons Ramsey Wolfe Schneider Mullins Benson Sharp Bowen Daniel Barber Cummings Hines Baldwin Griffith Valdez Hubbard Salazar Reeves Warner Stevenson Burgess Santos Tate Cross Garner Mann Mack Moss Thornton Dennis Mcgee Farmer Delgado Aguilar Vega Glover Manning Cohen Harmon Rodgers Robbins Newton Todd Blair Higgins Ingram Reese Cannon Strickland Townsend Potter Goodwin Walton Rowe Hampton Ortega Patton Swanson Joseph Francis Goodman Maldonado Yates Becker Erickson Hodges Rios Conner Adkins Webster Norman Malone Hammond Flowers Cobb Moody Quinn Blake Maxwell Pope Floyd Osborne Paul McCarthy Guerrero Lindsey Estrada Sandoval Gibbs Tyler Gross Fitzgerald Stokes Doyle Sherman Saunders Wise Colon Gill Alvarado Greer Padilla Simon Waters Nunez Ballard Schwartz McBride Houston Christensen Klein Pratt Briggs Parsons McLaughlin Zimmerman French Buchanan Moran Copeland Roy Pittman Brady McCormick Holloway Brock Poole Frank Logan Owen Bass Marsh Drake Wong Jefferson Park Morton Abbott Sparks Patrick Norton Huff Clayton Massey Lloyd Figueroa Carson Bowers Roberson Barton Tran Lamb Harrington Casey Boone Cortez Clarke Mathis Singleton Wilkins Cain Bryan Underwood Hogan McKenzie Collier Luna Phelps McGuire Allison Bridges Wilkerson Nash Summers Atkins Wilcox Pitts Conley Marquez Burnett Richard Cochran Chase Davenport Hood Gates Clay Ayala Sawyer Roman Vazquez Dickerson Hodge Acosta Flynn Espinoza Nicholson Monroe Wolf Morrow Kirk Randall Anthony Whitaker O'Connor Skinner Ware Molina Kirby Huffman Bradford Charles Gilmore Dominguez O'Neal Bruce Lang Combs Kramer Heath Hancock Gallagher Gaines Shaffer Short Wiggins Mathews McClain Fischer Wall Small Melton Hensley Bond Dyer Cameron Grimes Contreras Christian Wyatt Baxter Snow Mosley Shepherd Larsen Hoover Beasley Glenn Petersen Whitehead Meyers Keith Garrison Vincent Shields Horn Savage Olsen Schroeder Hartman Woodard Mueller Kemp Deleon Booth Patel Calhoun Wiley Eaton Cline Navarro Harrell Lester Humphrey Parrish Duran Hutchinson Hess Dorsey Bullock Robles Beard Dalton Avila Vance Rich Blackwell York Johns Blankenship Trevino Salinas Campos Pruitt Moses Callahan Golden Montoya Hardin Guerra McDowell Carey Stafford Gallegos Henson Wilkinson Booker Merritt Miranda Atkinson Orr Decker Hobbs Preston Tanner Knox Pacheco Stephenson Glass Rojas Serrano Marks Hickman English Sweeney Strong Prince McClure Conway Walter Roth Maynard Farrell Lowery Hurst Nixon Weiss Trujillo Ellison Sloan Juarez Winters McLean Randolph Leon Boyer Villarreal McCall Gentry Carrillo Kent Ayers Lara Shannon Sexton Pace Hull Leblanc Browning Velasquez Leach Chang House Sellers Herring Noble Foley Bartlett Mercado Landry Durham Walls Barr McKee Bauer Rivers Everett Bradshaw Pugh Velez Rush Estes Dodson Morse Sheppard Weeks Camacho Bean Barron Livingston Middleton Spears Branch Blevins Chen Kerr McConnell Hatfield Harding Ashley Solis Herman Frost Giles Blackburn William Pennington Woodward Finley McIntosh Koch Best Solomon McCullough Dudley Nolan Blanchard Rivas Brennan Mejia Kane Benton Joyce Buckley Haley Valentine Maddox Russo McKnight Buck Boon McMillan Crosby Berg Dotson Mays Roach Church Chan Richmond Meadows Faulkner O'Neill Knapp Kline Barry Ochoa Jacobson Gay Avery Hendricks Horne Shepard Hebert Cherry Cardenas McIntyre Whitney Waller Holman Donaldson Cantu Terrell Morin Gillespie Fuentes Tillman Sanford Bentley Peck Key Salas Rollins Gamble Dickson Battle Santana Cabrera Cervantes Howe Hinton Hurley Spence Zamora Yang McNeil Suarez Case Petty Gould McFarland Sampson Carver Bray Rosario Macdonald Stout Hester Melendez Dillon Farley Hopper Galloway Potts Bernard Joyner Stein Aguirre Osborn Mercer Bender Franco Rowland Sykes Benjamin Travis Pickett Crane Sears Mayo Dunlap Hayden Wilder McKay Coffey McCarty Ewing Cooley Vaughan Bonner Cotton Holder Stark Ferrell Cantrell Fulton Lynn Lott Calderon Rosa Pollard Hooper Burch Mullen Fry Riddle Levy David Duke O'Donnell Guy Michael Britt Frederick Daugherty Berger Dillard Alston Jarvis Frye Riggs Chaney Odom Duffy Fitzpatrick Valenzuela Merrill Mayer Alford McPherson Acevedo Donovan Barrera Albert Cote Reilly Compton Raymond Mooney McGowan Craft Cleveland Clemons Wynn Nielsen Baird Stanton Snider Rosales Bright Witt Stuart Hays Holden Rutledge Kinney Clements Castaneda Slater Hahn Emerson Conrad Burks Delaney Pate Lancaster Sweet Justice Tyson Sharpe Whitfield Talley Macias Irwin Burris Ratliff McCray Madden Kaufman Beach Goff Cash Bolton McFadden Levine Good Byers Kirkland Kidd Workman Carney Dale McLeod Holcomb England Finch Head Burt Hendrix Sosa Haney Franks Sargent Nieves Downs Rasmussen Bird Hewitt Lindsay Le Foreman Valencia O'Neil Delacruz Vinson Dejesus Hyde Forbes Gilliam Guthrie Wooten Huber Barlow Boyle McMahon Buckner Rocha Puckett Langley Knowles Cooke Velazquez Whitley Noel Vang"
   val names = rawNames.split(" ")
 
-  private val nextNameIndex = Range(0, names.length).toIterator
+  private val nextNameIndex = names.indices.toIterator
 
   def nextBidder(): Option[String] = {
     if(nextNameIndex.hasNext)
@@ -300,7 +301,7 @@ object Items {
     itemLineRegex(itemNum, category, description, minBid, estValue) <- itemLineRegex findFirstIn itemLine
   } yield (itemNum, category, bidderName, description, BigDecimal(minBid), BigDecimal(estValue))
 
-  private val nextItemIndex = Range(0, itemData.length).toIterator
+  private val nextItemIndex = itemData.indices.toIterator
 
   def nextItem(): Option[(String, String, String, String, BigDecimal, BigDecimal)] = {
     if(nextItemIndex.hasNext)

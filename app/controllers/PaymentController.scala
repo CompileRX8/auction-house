@@ -1,18 +1,20 @@
 package controllers
 
+import javax.inject.Inject
+
+import models.{BidderException, BidderService}
 import play.api.mvc.{Action, Controller}
-import models.{BidderException, Bidder}
 
 import scala.util.{Failure, Success}
 
-object PaymentController extends Controller with Secured {
+class PaymentController @Inject()(bidderService: BidderService, appController: AppController) extends Controller with Secured {
 
   def newPayment(bidderId: Long) = Action(parse.json) { implicit request =>
     val desc = (request.body \ "description").as[String]
     val amount = (request.body \ "amount").as[BigDecimal]
-    Bidder.addPayment(bidderId, desc, amount) match {
+    bidderService.addPayment(bidderId, desc, amount) match {
       case Success(payment) =>
-        AppController.pushBidders()
+        appController.pushBidders()
         Ok(s"Created payment for ${payment.bidder.id.get} ${payment.bidder.name} for $$ ${payment.amount}")
       case Failure(e: BidderException) =>
         BadRequest(e.message)
