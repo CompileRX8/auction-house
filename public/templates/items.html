@@ -26,9 +26,9 @@
                     </tr>
                     </thead>
                     <tbody>
-                    <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy:'item.itemNumber'"
+                    <tr ng-repeat="itemdata in dataService.itemsdata | filter: searchterm | orderBy:'item.sortField'"
                         ng-click="itemClicked(itemdata.item.id)">
-                        <td class="col-md-1">{{itemdata.item.itemNumber}}</td>
+                        <td class="text-right col-md-1">{{itemdata.item.itemNumber}}</td>
                         <td class="col-md-2">{{itemdata.item.category}}</td>
                         <td class="col-md-2">{{itemdata.item.donor}}</td>
                         <td class="col-md-4">{{itemdata.item.description}}</td>

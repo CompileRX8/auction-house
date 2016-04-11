@@ -1,10 +1,11 @@
 package actors
 
-import akka.actor.{Props, Actor}
-import models.{BidderException, Item, Payment, Bidder}
+import akka.actor.{Actor, ActorRef, Props}
+import models.{Bidder, BidderException, Item, Payment}
 import misc.Util
-import persistence.slick.{ItemsPersistenceSlick, BiddersPersistenceSlick}
-import persistence.{ItemsPersistence, BiddersPersistence}
+import persistence.slick.{BiddersPersistenceSlick, ItemsPersistenceSlick}
+import persistence.{BiddersPersistence, ItemsPersistence}
+
 import scala.concurrent.Await
 import play.api.Play.current
 import play.api.libs.concurrent.Execution.Implicits._
@@ -44,27 +45,42 @@ class BiddersActor extends Actor {
 
   private def findBidder(name: String): Try[Option[Bidder]] = biddersPersistence.bidderByName(name)
 
+  private def tryOrSendFailure(sender: ActorRef)(f: (ActorRef) => Unit) = {
+    try {
+      f(sender)
+    } catch {
+      case e: Exception =>
+        sender ! akka.actor.Status.Failure(e)
+        throw e
+    }
+  }
+
   override def receive = {
     case LoadFromDataSource =>
-      sender ! biddersPersistence.load(self)
+      tryOrSendFailure(sender) { s =>
+        s ! biddersPersistence.load(self)
+      }
 
-    case GetBidders =>
-      sender ! biddersPersistence.sortedBidders
+    case GetBidders => tryOrSendFailure(sender) { s =>
+      s ! biddersPersistence.sortedBidders
+    }
 
-    case GetBidder(id) =>
-      sender ! findBidder(id)
+    case GetBidder(id) => tryOrSendFailure(sender) { s =>
+      s ! findBidder(id)
+    }
 
-    case newBidder @ Bidder(None, name) =>
-      sender ! findBidder(name).flatMap {
+    case newBidder @ Bidder(None, name) => tryOrSendFailure(sender) { s =>
+      s ! findBidder(name).flatMap {
         case Some(bidder) => Failure(new BidderException(s"Bidder name $name already exists as ID ${bidder.id.get}"))
         case None => biddersPersistence.create(newBidder)
       }
+    }
 
     case bidder @ Bidder(idOpt @ Some(id), name) =>
     // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
-    case DeleteBidder(id) =>
-      sender ! findBidder(id).flatMap {
+    case DeleteBidder(id) => tryOrSendFailure(sender) { s =>
+      s ! findBidder(id).flatMap {
         case Some(bidder) =>
           itemsPersistence.winningBidsByBidder(bidder).flatMap {
             case Nil =>
@@ -80,24 +96,28 @@ class BiddersActor extends Actor {
         case None =>
           Failure(new BidderException(s"Cannot find bidder ID $id"))
       }
+    }
 
-    case EditBidder(bidder @ Bidder(idOpt @ Some(id), name)) =>
-      sender ! biddersPersistence.edit(bidder)
+    case EditBidder(bidder @ Bidder(idOpt @ Some(id), name)) => tryOrSendFailure(sender) { s =>
+      s ! biddersPersistence.edit(bidder)
+    }
 
     case EditBidder(bidder @ Bidder(None, name)) =>
       sender ! Failure(new BidderException(s"Cannot edit bidder without bidder ID"))
 
-    case newPayment @ Payment(None, bidder, description, amount) =>
-      sender ! findBidder(bidder).flatMap {
+    case newPayment @ Payment(None, bidder, description, amount) => tryOrSendFailure(sender) { s =>
+      s ! findBidder(bidder).flatMap {
         case Some(bidderInfo) => biddersPersistence.create(newPayment)
         case None => Failure(new BidderException(s"Cannot find bidder $bidder"))
       }
+    }
 
     case p @ Payment(idOpt @ Some(id), bidder, description, amount) =>
     // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
-    case Payments(bidder) =>
-      sender ! biddersPersistence.paymentsByBidder(bidder)
+    case Payments(bidder) => tryOrSendFailure(sender) { s =>
+      s ! biddersPersistence.paymentsByBidder(bidder)
+    }
 
     case _ =>
   }

@@ -14,7 +14,7 @@ object BiddersPersistenceSlick extends SlickPersistence with BiddersPersistence 
   override def load(biddersActor: ActorRef): Boolean = {
     db withSession {
       implicit session =>
-        try {
+//        try {
           biddersQuery.list map {
             _.copy()
           } foreach {
@@ -26,11 +26,11 @@ object BiddersPersistenceSlick extends SlickPersistence with BiddersPersistence 
             biddersActor ! _
           }
           true
-        } catch {
-          case sqle: SQLException =>
-            (biddersQuery.ddl ++ paymentsQuery.ddl).create
-            true
-        }
+//        } catch {
+//          case sqle: SQLException =>
+//            (biddersQuery.ddl ++ paymentsQuery.ddl).create
+//            true
+//        }
     }
   }
 
