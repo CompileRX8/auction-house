@@ -65,6 +65,7 @@ define ['angular'],
             @itemsdata = {}
             @winningbids = {}
             @totalBids = 0
+            @totalPayments = 0
             @bidderUpdateCallback = null
             @itemUpdateCallback = null
             @winningBidUpdateCallback = null
@@ -76,6 +77,10 @@ define ['angular'],
               console.log "Received new biddersdata: " + msg
               @biddersdata = @_parseMsg(msg)
               @_updateTotalBids(@biddersdata)
+              totalPayments = 0
+              for bidderdata in @biddersdata
+                totalPayments += @paymentTotal(bidderdata)
+              @totalPayments = totalPayments
               if @bidderUpdateCallback
                 @bidderUpdateCallback()
               if @winningBidUpdateCallback
