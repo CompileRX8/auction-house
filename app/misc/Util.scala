@@ -31,7 +31,7 @@ object Util {
 
   def formatTime(time: Long) = s"${hours(time)}:${minutes(time)}:${seconds(time)}"
 
-  val defaultAwaitTimeout = Duration(5, TimeUnit.SECONDS)
+  val defaultAwaitTimeout = Duration(15, TimeUnit.SECONDS)
 
   def formatMoney(amount: BigDecimal) = amount.formatted("$ %04.2f")
 
