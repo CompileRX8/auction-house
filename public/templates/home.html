@@ -3,7 +3,18 @@
         <h1 class="page-header">Home</h1>
     </header>
     <div class="jumbotron">
-        <h1 style="text-align: center">{{ dataService.totalBids | currency }}</h1>
+        <h1>
+            <table class="table-responsive" width="100%">
+                <tr>
+                    <td class="text-left">Overall Bids:</td>
+                    <td class="text-right">{{ dataService.totalBids | currency }}</td>
+                </tr>
+                <tr>
+                    <td class="text-left">Overall Payments:</td>
+                    <td class="text-right">{{ dataService.totalPayments | currency }}</td>
+                </tr>
+            </table>
+        </h1>
     </div>
     <div class="row">
         <div class="col-md-2 text-right"><h2>Bidder ID</h2></div>

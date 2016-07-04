@@ -1,5 +1,7 @@
 package persistence.slick
 
+import java.util.Currency
+
 import models.{Bidder, Item, Payment, WinningBid}
 import play.api.db.slick.Config.driver.simple._
 import play.api.db.slick._
@@ -16,6 +18,8 @@ trait SlickPersistence {
       DB
     }
   }
+
+  type PGMoney = Double
 
   class Bidders(tag: Tag) extends Table[Bidder](tag, "bidder") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
@@ -38,12 +42,12 @@ trait SlickPersistence {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def bidderId = column[Long]("bidder_id", O.NotNull)
     def description = column[String]("description", O.NotNull)
-    def amount = column[BigDecimal]("amount", O.NotNull)
+    def amount = column[PGMoney]("amount", O.NotNull)
 
     def bidderFK = foreignKey("payment_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
     def bidderIdx = index("payment_bidder_id_idx", bidderId)
 
-    def * = (id.?, bidderId, description, amount) <> ( PaymentRow.tupled, PaymentRow.unapply )
+    def * = (id.?, bidderId, description, amount.asColumnOf[BigDecimal]) <> ( PaymentRow.tupled, PaymentRow.unapply )
   }
   val paymentsQuery = TableQuery[Payments]
 
@@ -53,9 +57,9 @@ trait SlickPersistence {
     def category = column[String]("category", O.NotNull)
     def donor = column[String]("donor", O.NotNull)
     def description = column[String]("description", O.NotNull)
-    def minbid = column[BigDecimal]("minbid", O.NotNull)
-    def estvalue = column[BigDecimal]("estvalue", O.NotNull)
-    def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( Item.tupled, Item.unapply )
+    def minbid = column[PGMoney]("minbid", O.NotNull)
+    def estvalue = column[PGMoney]("estvalue", O.NotNull)
+    def * = (id.?, itemNumber, category, donor, description, minbid.asColumnOf[BigDecimal], estvalue.asColumnOf[BigDecimal]) <> ( Item.tupled, Item.unapply )
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
   }
@@ -75,8 +79,8 @@ trait SlickPersistence {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def bidderId = column[Long]("bidder_id", O.NotNull)
     def itemId = column[Long]("item_id", O.NotNull)
-    def amount = column[BigDecimal]("amount", O.NotNull)
-    def * = (id.?, bidderId, itemId, amount) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
+    def amount = column[PGMoney]("amount", O.NotNull)
+    def * = (id.?, bidderId, itemId, amount.asColumnOf[BigDecimal]) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
 
     def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
     def itemFK = foreignKey("winningbid_item_id_fk", itemId, itemsQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)

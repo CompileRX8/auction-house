@@ -25,7 +25,7 @@ object Bidder extends ((Option[Long], String) => Bidder) {
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val bidderDataFormat = Json.format[BidderData]
 
-  implicit val timeout = Timeout(3 seconds)
+  implicit val timeout = Timeout(15 seconds)
 
   private def wait[T](awaitable: Awaitable[T]): T = {
     Await.result(awaitable, Util.defaultAwaitTimeout)

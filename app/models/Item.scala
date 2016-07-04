@@ -17,7 +17,7 @@ case class ItemData(item: Item, winningBids: List[WinningBid])
 
 case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal)
 object Item extends ((Option[Long], String, String, String, String, BigDecimal, BigDecimal) => Item) {
-  implicit val timeout = Timeout(3 seconds)
+  implicit val timeout = Timeout(15 seconds)
 
   implicit val itemFormat = Json.format[Item]
   implicit val winningBidFormat = Json.format[WinningBid]

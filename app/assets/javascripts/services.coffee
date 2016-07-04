@@ -65,6 +65,7 @@ define ['angular'],
             @itemsdata = {}
             @winningbids = {}
             @totalBids = 0
+            @totalPayments = 0
             @bidderUpdateCallback = null
             @itemUpdateCallback = null
             @winningBidUpdateCallback = null
@@ -75,6 +76,11 @@ define ['angular'],
               @_lastUpdate = Date.now()
               console.log "Received new biddersdata: " + msg
               @biddersdata = @_parseMsg(msg)
+              @_updateTotalBids(@biddersdata)
+              totalPayments = 0
+              for bidderdata in @biddersdata
+                totalPayments += @paymentTotal(bidderdata)
+              @totalPayments = totalPayments
               if @bidderUpdateCallback
                 @bidderUpdateCallback()
               if @winningBidUpdateCallback
@@ -87,6 +93,14 @@ define ['angular'],
               @_lastUpdate = Date.now()
               console.log "Received new itemsdata: " + msg
               @itemsdata = @_parseMsg(msg)
+              for itemdata in @itemsdata
+                item = itemdata.item
+                matches = item.itemNumber.match(/\d+/)
+                if matches && matches.length > 0
+                  item.sortField = ("0000000000" + item.itemNumber).substr(matches[0].length)
+                else
+                  item.sortField = item.itemNumber
+              @_updateTotalBids(@itemsdata)
               if @itemUpdateCallback
                 @itemUpdateCallback()
               if @winningBidUpdateCallback
@@ -119,7 +133,6 @@ define ['angular'],
 
           _parseMsg: (msg) =>
             parsedData = JSON.parse(msg.data)
-            @_updateTotalBids(parsedData)
             parsedData
 
           setBidderUpdateCallback: (callback) ->
