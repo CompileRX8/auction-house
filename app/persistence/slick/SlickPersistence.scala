@@ -11,13 +11,11 @@ import scala.slick.jdbc.JdbcBackend
 
 trait SlickPersistence {
 
-  val db = {
-    if(System.getProperty("database") != null) {
-      DB(System.getProperty("database"))
-    } else {
-      DB
-    }
-  }
+  val dbConfig = DatabaseConfigProvider.get[JdbcProfile](Play.current)
+
+  import dbConfig.profile.api._
+
+  val db = dbConfig.db
 
   type PGMoney = Double
 

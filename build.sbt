@@ -6,11 +6,11 @@ scalaVersion := "2.11.11"
 
 libraryDependencies ++= Seq(
   jdbc
-  ,"com.typesafe.play" %% "play-slick" % "0.8.1"
-  ,"org.webjars" %% "webjars-play" % "2.3.0-3"
+  ,"com.typesafe.play" %% "play-slick" % "2.0.0"
+  ,"org.webjars" %% "webjars-play" % "2.5.0-4"
   ,"org.webjars" % "angularjs" % "1.3.15"
   ,"org.webjars" % "bootstrap" % "3.3.4"
-  ,"com.typesafe.akka" %% "akka-actor" % "2.3.15"
+  ,"com.typesafe.akka" %% "akka-actor" % "2.4.17"
   ,"org.postgresql" % "postgresql" % "42.0.0"
 )
 
