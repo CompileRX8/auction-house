@@ -3,7 +3,6 @@ package persistence.slick
 import java.util.Currency
 
 import models.{Bidder, Item, Payment, WinningBid}
-import play.api.db.slick.Config.driver.simple._
 import play.api.db.slick._
 import play.api.Play.current
 

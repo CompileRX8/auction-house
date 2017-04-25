@@ -5,11 +5,12 @@ import java.sql.SQLException
 import akka.actor.ActorRef
 import models.{Bidder, Item, ItemException, WinningBid}
 import persistence.ItemsPersistence
-import play.api.db.slick.Config.driver.simple._
 
 import scala.util.Try
 
 object ItemsPersistenceSlick extends SlickPersistence with ItemsPersistence {
+
+  import dbConfig.profile.api._
 
   override def load(itemsActor: ActorRef): Boolean = {
     db withSession {
