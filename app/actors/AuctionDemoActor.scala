@@ -1,15 +1,15 @@
 package actors
 
-import play.api.libs.concurrent.Execution.Implicits._
+import javax.inject.Inject
+
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 import scala.concurrent.duration._
-import akka.actor.{ActorLogging, Actor, Props}
+import akka.actor.{Actor, ActorLogging, Props, Scheduler}
 import akka.util.Timeout
 import models._
-import play.api.libs.concurrent.Akka
-import play.api.Play.current
 
-import scala.util.{Failure, Success, Random}
+import scala.util.{Failure, Random, Success}
 
 object AuctionDemoActor {
 
@@ -20,13 +20,9 @@ object AuctionDemoActor {
   case object NewPayment
 
   def props = Props(classOf[AuctionDemoActor])
-
-  val auctionDemoActor = Akka.system.actorOf(AuctionDemoActor.props)
-
-  val actionSchedule = Akka.system.scheduler.schedule(10 seconds, 10 seconds, auctionDemoActor, AuctionAction)
 }
 
-class AuctionDemoActor extends Actor with ActorLogging {
+class AuctionDemoActor @Inject() (implicit val scheduler: Scheduler, implicit val itemHandler: ItemHandler, implicit val bidderHandler: BidderHandler) extends Actor with ActorLogging {
   import AuctionDemoActor._
 
   implicit val timeout = Timeout(3 seconds)
@@ -35,6 +31,8 @@ class AuctionDemoActor extends Actor with ActorLogging {
 
   var bidderData: List[BidderData] = List.empty
   var itemData: List[ItemData] = List.empty
+
+  scheduler.schedule(10 seconds, 10 seconds, self, AuctionAction)
 
   Range(0, 10) foreach { _ => self ! NewBidder }
   Range(0, 30) foreach { _ => self ! NewItem }
@@ -54,73 +52,83 @@ class AuctionDemoActor extends Actor with ActorLogging {
       }
 
     case NewBidder =>
-      Names.nextBidder() map { newBidder =>
+      Names.nextBidder() foreach { newBidder =>
         log.debug("Adding bidder: {}", newBidder)
-        Bidder.create(newBidder) match {
+        bidderHandler.create(newBidder) onComplete {
           case Success(bidder) =>
-            bidderData = Bidder.currentBidders().getOrElse(List())
-            log.debug("Added bidder: {}  Bidder Data size: {}", bidder, bidderData.size)
+            bidderHandler.currentBidders() foreach { bd =>
+              bidderData = bd
+              log.debug("Added bidder: {}  Bidder Data size: {}", bidder, bidderData.size)
+            }
           case Failure(e) =>
             log.warning(s"Unable to add bidder: ${e.getMessage}")
         }
       }
 
     case NewItem =>
-      Items.nextItem() map { newItem =>
+      Items.nextItem() foreach { newItem =>
         log.debug("Adding item: {}", newItem)
-        Item.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5, newItem._6) match {
+        itemHandler.create(newItem._1, newItem._2, newItem._3, newItem._4, newItem._5, newItem._6) onComplete {
           case Success(item) =>
-            itemData = Item.currentItems().getOrElse(List())
-            log.debug("Added item: {}  Item Data size: {}", item, itemData.size)
+            itemHandler.currentItems() foreach { id =>
+              itemData = id
+              log.debug("Added item: {}  Item Data size: {}", item, itemData.size)
+            }
           case Failure(e) =>
             log.warning(s"Unable to add item: ${e.getMessage}")
         }
       }
 
     case NewPayment =>
-      if(bidderData.size == 0) {
-        bidderData = Bidder.currentBidders().get
-      }
-      val bidderIdx = random.nextInt(bidderData.size)
-      val bidder = bidderData(bidderIdx)
-      val bidderId = bidder.bidder.id.get
-      Bidder.totalOwed(bidderId) match {
-        case Success(amount) if amount > 0 =>
-          val description = random.nextInt(3) match {
-            case 0 => "Cash"
-            case 1 => "Check #10" + amount.intValue()
-            case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
-          }
-          log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
-          Bidder.addPayment(bidderId, description, amount) match {
-            case Success(payment) =>
-              bidderData = Bidder.currentBidders().get
-              log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", payment.bidder, payment.amount, payment.description, bidderData.size)
-            case Failure(e) =>
-              log.warning(s"Unable to add payment: ${e.getMessage}")
-          }
-        case Failure(e) =>
-          log.warning(s"Unable to get total owed for bidder $bidderId")
-        case _ =>
+      bidderHandler.currentBidders() foreach { bd =>
+        bidderData = bd
+
+        val bidderIdx = random.nextInt(bidderData.size)
+        val bidder = bidderData(bidderIdx)
+        val bidderId = bidder.bidder.id.get
+        bidderHandler.totalOwed(bidderId) onComplete {
+          case Success(amount) if amount > 0 =>
+            val description = random.nextInt(3) match {
+              case 0 => "Cash"
+              case 1 => "Check #10" + amount.intValue()
+              case 2 => "Credit Card - Auth #" + random.nextInt(10000000).formatted("%07d") + "" + amount.intValue()
+            }
+            log.debug("Adding payment for bidder {} in amount {} with description {}", bidder.bidder, amount, description)
+            bidderHandler.addPayment(bidderId, description, amount) onComplete {
+              case Success(payment) =>
+                bidderHandler.currentBidders() foreach { bd =>
+                  bidderData = bd
+                  log.debug("Added payment for bidder {} in amount {} with description {}  Bidder Data Size: {}", payment.bidder, payment.amount, payment.description, bidderData.size)
+                }
+              case Failure(e) =>
+                log.warning(s"Unable to add payment: ${e.getMessage}")
+            }
+          case Failure(e) =>
+            log.warning(s"Unable to get total owed for bidder $bidderId")
+          case _ =>
+        }
       }
 
     case NewWinningBid =>
-      if(bidderData.size == 0 || itemData.size == 0) {
-        bidderData = Bidder.currentBidders().get
-        itemData = Item.currentItems().get
-      }
-      val bidderIdx = random.nextInt(bidderData.size)
-      val bidder = bidderData(bidderIdx)
-      val itemIdx = random.nextInt(itemData.size)
-      val item = itemData(itemIdx)
-      val amount = item.item.minbid + random.nextInt(300)
-      log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
-      Item.addWinningBid(bidder.bidder, item.item, amount) match {
-        case Success(winningBid) =>
-          itemData = Item.currentItems().get
-          log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", winningBid.bidder, winningBid.item, winningBid.amount, itemData.size)
-        case Failure(e) =>
-          log.warning(s"Unable to add winning bid: ${e.getMessage}")
+      bidderHandler.currentBidders().zip(itemHandler.currentItems()) foreach { case (bd, id) =>
+        bidderData = bd
+        itemData = id
+
+        val bidderIdx = random.nextInt(bidderData.size)
+        val bidder = bidderData(bidderIdx)
+        val itemIdx = random.nextInt(itemData.size)
+        val item = itemData(itemIdx)
+        val amount = item.item.minbid + random.nextInt(300)
+        log.debug("Adding winning bid for bidder {} for item {} in amount {}", bidder.bidder, item.item, amount)
+        itemHandler.addWinningBid(bidder.bidder, item.item, amount) onComplete {
+          case Success(winningBid) =>
+            itemHandler.currentItems() foreach { id =>
+              itemData = id
+              log.debug("Added winning bid for bidder {} for item {} in amount {}  Item Data Size: {}", winningBid.bidder, winningBid.item, winningBid.amount, itemData.size)
+            }
+          case Failure(e) =>
+            log.warning(s"Unable to add winning bid: ${e.getMessage}")
+        }
       }
   }
 }
@@ -298,11 +306,11 @@ object Items {
   val itemData = for {
     (itemLine, bidderName) <- rawItems.split("\n").zip(Names.names)
     itemLineRegex(itemNum, category, description, minBid, estValue) <- itemLineRegex findFirstIn itemLine
-  } yield (itemNum, category, bidderName, description, BigDecimal(minBid), BigDecimal(estValue))
+  } yield (itemNum, category, bidderName, description, minBid.toDouble, estValue.toDouble)
 
   private val nextItemIndex = Range(0, itemData.length).toIterator
 
-  def nextItem(): Option[(String, String, String, String, BigDecimal, BigDecimal)] = {
+  def nextItem(): Option[(String, String, String, String, Double, Double)] = {
     if(nextItemIndex.hasNext)
       Some(itemData(nextItemIndex.next()))
     else

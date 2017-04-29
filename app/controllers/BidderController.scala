@@ -1,75 +1,55 @@
 package controllers
 
+import javax.inject.Inject
+
 import play.api.Logger
-import play.api.mvc.{Action, Controller}
+import play.api.mvc.{Action, AnyContent, Controller, Result}
 import models._
-import play.api.libs.json.Json
+import play.api.libs.json.{JsValue, Json}
 
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
 
-object BidderController extends Controller {
+class BidderController @Inject()(appController: AppController, bidderHandler: BidderHandler, implicit val ec: ExecutionContext) extends Controller {
 
-  val logger = Logger(BidderController.getClass)
+  val logger = Logger(classOf[BidderController])
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
+  implicit val itemFormat = Json.format[Item]
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val bidderDataFormat = Json.format[BidderData]
 
-  def bidders = Action { implicit request =>
-    Bidder.currentBidders() match {
-      case Success(bidders) =>
-        Ok(Json.toJson(bidders))
-      case Failure(e: BidderException) =>
-        logger.error("Unable to send bidders", e)
-        BadRequest(e.message)
-      case Failure(e) =>
-        logger.error("Unable to send bidders", e)
-        BadRequest(e.getMessage)
-    }
+  def bidders: Action[AnyContent] = Action.async { implicit request =>
+    bidderHandler.currentBidders() map {
+      bidders => Ok(Json.toJson(bidders))
+    } recover exceptionAction("send")
   }
 
-  def newBidder = Action(parse.json) { implicit request =>
+  def newBidder: Action[JsValue] = Action.async(parse.json) { implicit request =>
     val name = (request.body \ "name").as[String]
-    Bidder.create(name) match {
-      case Success(bidder) =>
-        AppController.pushBidders()
-        Ok(s"Created bidder ${bidder.id.get} ${bidder.name}")
-      case Failure(e: BidderException) =>
-        logger.error("Unable to create bidder", e)
-        BadRequest(e.message)
-      case Failure(e) =>
-        logger.error("Unable to create bidder", e)
-        BadRequest(e.getMessage)
-    }
+    bidderHandler.create(name) map bidderAction("Created bidder") recover exceptionAction("create")
   }
 
-  def editBidder(bidderId: Long) = Action(parse.json) { implicit request =>
+  def editBidder(bidderId: Long): Action[JsValue] = Action.async(parse.json) { implicit request =>
     val name = (request.body \ "name").as[String]
-    Bidder.edit(bidderId, name) match {
-      case Success(bidder) =>
-        AppController.pushBidders()
-        Ok(s"Edited bidder ${bidder.id.get} ${bidder.name}")
-      case Failure(e: BidderException) =>
-        logger.error("Unable to edit bidder", e)
-        BadRequest(e.message)
-      case Failure(e) =>
-        logger.error("Unable to edit bidder", e)
-        BadRequest(e.getMessage)
-    }
+    bidderHandler.edit(bidderId, name) map bidderAction("Edited bidder") recover exceptionAction("edit")
   }
 
-  def deleteBidder(bidderId: Long) = Action(parse.json) { implicit request =>
-    Bidder.delete(bidderId) match {
-      case Success(bidder) =>
-        AppController.pushBidders()
-        Ok(s"Deleted bidder ${bidder.id.get} ${bidder.name}")
-      case Failure(e: BidderException) =>
-        logger.error("Unable to delete bidder", e)
-        BadRequest(e.message)
-      case Failure(e) =>
-        logger.error("Unable to delete bidder", e)
-        BadRequest(e.getMessage)
-    }
+  def deleteBidder(bidderId: Long): Action[JsValue] = Action.async(parse.json) { implicit request =>
+    bidderHandler.delete(bidderId) map bidderAction("Deleted bidder") recover exceptionAction("delete")
+  }
+
+  private def bidderAction(msg: String) = { bidder: Bidder =>
+    appController.pushBidders()
+    Ok(s"$msg ${bidder.id.get} ${bidder.name}")
+  }
+
+  private def exceptionAction(msg: String): PartialFunction[Throwable, Result] = {
+    case e: BidderException =>
+      logger.error(s"Unable to $msg bidder", e)
+      BadRequest(e.message)
+    case e: Exception =>
+      logger.error(s"Unable to $msg bidder", e)
+      BadRequest(e.getMessage)
   }
 }

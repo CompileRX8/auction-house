@@ -6,10 +6,11 @@ scalaVersion := "2.11.11"
 
 libraryDependencies ++= Seq(
   jdbc
-  ,"com.typesafe.play" %% "play-slick" % "2.0.0"
+  ,"com.typesafe.play" %% "play-slick" % "2.1.0"
   ,"org.webjars" %% "webjars-play" % "2.5.0-4"
   ,"org.webjars" % "angularjs" % "1.3.15"
-  ,"org.webjars" % "bootstrap" % "3.3.4"
+  ,"org.webjars" % "bootstrap" % "3.3.7"
+  ,"org.webjars" % "requirejs" % "2.3.3"
   ,"com.typesafe.akka" %% "akka-actor" % "2.4.17"
   ,"org.postgresql" % "postgresql" % "42.0.0"
 )
@@ -22,4 +23,6 @@ LessKeys.strictMath in Assets := true
 
 includeFilter in (Assets, LessKeys.less) := "*.less"
 
-lazy val root = (project in file(".")).enablePlugins(PlayScala).enablePlugins(SbtWeb)
+lazy val root = (project in file(".")).enablePlugins(PlayScala).enablePlugins(SbtWeb).enablePlugins(SbtTwirl)
+
+//fork in run := true

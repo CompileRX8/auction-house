@@ -1,17 +1,15 @@
 package actors
 
+import javax.inject.Inject
+
 import akka.actor.{Actor, ActorRef, Props}
-import models.{Bidder, BidderException, Item, Payment}
-import misc.Util
+import models.{Bidder, BidderException, Payment}
 import persistence.slick.{BiddersPersistenceSlick, ItemsPersistenceSlick}
-import persistence.{BiddersPersistence, ItemsPersistence}
 
-import scala.concurrent.Await
-import play.api.Play.current
-import play.api.libs.concurrent.Execution.Implicits._
-import play.api.libs.concurrent.Akka
+import scala.concurrent.Future
 
-import scala.util.{Failure, Success, Try}
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.util.Failure
 
 object BiddersActor {
   case object LoadFromDataSource
@@ -24,26 +22,21 @@ object BiddersActor {
   case class Payments(bidder: Bidder)
 
   def props = Props(classOf[BiddersActor])
-
-  val biddersActor = Akka.system.actorOf(BiddersActor.props)
-
-  val biddersPersistence = BiddersPersistenceSlick
-  val itemsPersistence = ItemsPersistenceSlick
 }
 
 
 
-class BiddersActor extends Actor {
+class BiddersActor @Inject()(implicit val biddersPersistence: BiddersPersistenceSlick, implicit val itemsPersistence: ItemsPersistenceSlick) extends Actor {
   import BiddersActor._
 
-  private def findBidder(bidder: Bidder): Try[Option[Bidder]] = bidder.id match {
+  private def findBidder(bidder: Bidder): Future[Option[Bidder]] = bidder.id match {
     case Some(id) => findBidder(id)
     case None => findBidder(bidder.name)
   }
 
-  private def findBidder(id: Long): Try[Option[Bidder]] = biddersPersistence.bidderById(id)
+  private def findBidder(id: Long): Future[Option[Bidder]] = biddersPersistence.bidderById(id)
 
-  private def findBidder(name: String): Try[Option[Bidder]] = biddersPersistence.bidderByName(name)
+  private def findBidder(name: String): Future[Option[Bidder]] = biddersPersistence.bidderByName(name)
 
   private def tryOrSendFailure(sender: ActorRef)(f: (ActorRef) => Unit) = {
     try {
@@ -70,8 +63,8 @@ class BiddersActor extends Actor {
     }
 
     case newBidder @ Bidder(None, name) => tryOrSendFailure(sender) { s =>
-      s ! findBidder(name).flatMap {
-        case Some(bidder) => Failure(new BidderException(s"Bidder name $name already exists as ID ${bidder.id.get}"))
+      s ! findBidder(name).map {
+        case Some(bidder) => Failure(BidderException(s"Bidder name $name already exists as ID ${bidder.id.get}"))
         case None => biddersPersistence.create(newBidder)
       }
     }
@@ -80,21 +73,21 @@ class BiddersActor extends Actor {
     // Do nothing since not maintaining our own Set[BidderInfo] anymore
 
     case DeleteBidder(id) => tryOrSendFailure(sender) { s =>
-      s ! findBidder(id).flatMap {
+      s ! findBidder(id).map {
         case Some(bidder) =>
-          itemsPersistence.winningBidsByBidder(bidder).flatMap {
+          itemsPersistence.winningBidsByBidder(bidder).map {
             case Nil =>
-              biddersPersistence.paymentsByBidder(bidder).flatMap {
+              biddersPersistence.paymentsByBidder(bidder).map {
                 case Nil =>
                   biddersPersistence.delete(bidder)
                 case payments =>
-                  Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with payments"))
+                  Failure(BidderException(s"Cannot delete bidder ${bidder.name} with payments"))
               }
             case winningBids =>
-              Failure(new BidderException(s"Cannot delete bidder ${bidder.name} with winning bids"))
+              Failure(BidderException(s"Cannot delete bidder ${bidder.name} with winning bids"))
           }
         case None =>
-          Failure(new BidderException(s"Cannot find bidder ID $id"))
+          Failure(BidderException(s"Cannot find bidder ID $id"))
       }
     }
 
@@ -103,12 +96,12 @@ class BiddersActor extends Actor {
     }
 
     case EditBidder(bidder @ Bidder(None, name)) =>
-      sender ! Failure(new BidderException(s"Cannot edit bidder without bidder ID"))
+      sender ! Failure(BidderException(s"Cannot edit bidder without bidder ID"))
 
     case newPayment @ Payment(None, bidder, description, amount) => tryOrSendFailure(sender) { s =>
-      s ! findBidder(bidder).flatMap {
+      s ! findBidder(bidder).map {
         case Some(bidderInfo) => biddersPersistence.create(newPayment)
-        case None => Failure(new BidderException(s"Cannot find bidder $bidder"))
+        case None => Failure(BidderException(s"Cannot find bidder $bidder"))
       }
     }
 

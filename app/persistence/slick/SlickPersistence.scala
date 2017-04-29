@@ -1,16 +1,13 @@
 package persistence.slick
 
-import java.util.Currency
-
-import models.{Bidder, Item, Payment, WinningBid}
+import models._
 import play.api.db.slick._
 import play.api.Play.current
-
-import scala.slick.jdbc.JdbcBackend
+import slick.jdbc.JdbcProfile
 
 trait SlickPersistence {
 
-  val dbConfig = DatabaseConfigProvider.get[JdbcProfile](Play.current)
+  val dbConfig = DatabaseConfigProvider.get[JdbcProfile](current)
 
   import dbConfig.profile.api._
 
@@ -20,64 +17,52 @@ trait SlickPersistence {
 
   class Bidders(tag: Tag) extends Table[Bidder](tag, "bidder") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def name = column[String]("name", O.NotNull)
+    def name = column[String]("name")
     def * = (id.?, name) <> ( Bidder.tupled , Bidder.unapply )
 
     def nameIdx = index("bidder_name_idx", name, unique = true)
   }
   val biddersQuery = TableQuery[Bidders]
 
-  case class PaymentRow(id: Option[Long], bidderId: Long, description: String, amount: BigDecimal) {
-    def bidder(implicit session: JdbcBackend#SessionDef) = biddersQuery.filter(_.id === bidderId).first
-    def toPayment(implicit session: JdbcBackend#SessionDef): Payment = Payment(id, bidder, description, amount)
-  }
-  object PaymentRow extends ((Option[Long], Long, String, BigDecimal) => PaymentRow) {
-    def fromPayment(payment: Payment): PaymentRow = PaymentRow(payment.id, payment.bidder.id.get, payment.description, payment.amount)
-  }
+  case class PaymentRow(id: Option[Long], bidderId: Long, description: String, amount: PGMoney)
+  object PaymentRow extends ((Option[Long], Long, String, PGMoney) => PaymentRow)
 
   class Payments(tag: Tag) extends Table[PaymentRow](tag, "payment") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def bidderId = column[Long]("bidder_id", O.NotNull)
-    def description = column[String]("description", O.NotNull)
-    def amount = column[PGMoney]("amount", O.NotNull)
+    def bidderId = column[Long]("bidder_id")
+    def description = column[String]("description")
+    def amount = column[PGMoney]("amount")
 
     def bidderFK = foreignKey("payment_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
     def bidderIdx = index("payment_bidder_id_idx", bidderId)
 
-    def * = (id.?, bidderId, description, amount.asColumnOf[BigDecimal]) <> ( PaymentRow.tupled, PaymentRow.unapply )
+    def * = (id.?, bidderId, description, amount) <> ( PaymentRow.tupled , PaymentRow.unapply )
   }
   val paymentsQuery = TableQuery[Payments]
 
   class Items(tag: Tag) extends Table[Item](tag, "item") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def itemNumber = column[String]("item_number", O.NotNull)
-    def category = column[String]("category", O.NotNull)
-    def donor = column[String]("donor", O.NotNull)
-    def description = column[String]("description", O.NotNull)
-    def minbid = column[PGMoney]("minbid", O.NotNull)
-    def estvalue = column[PGMoney]("estvalue", O.NotNull)
-    def * = (id.?, itemNumber, category, donor, description, minbid.asColumnOf[BigDecimal], estvalue.asColumnOf[BigDecimal]) <> ( Item.tupled, Item.unapply )
+    def itemNumber = column[String]("item_number")
+    def category = column[String]("category")
+    def donor = column[String]("donor")
+    def description = column[String]("description")
+    def minbid = column[PGMoney]("minbid")
+    def estvalue = column[PGMoney]("estvalue")
+    def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( Item.tupled, Item.unapply )
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
   }
   val itemsQuery = TableQuery[Items]
 
-  case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: BigDecimal) {
-    def bidder(implicit session: JdbcBackend#SessionDef) = biddersQuery.filter(_.id === bidderId).first
-    def item(implicit session: JdbcBackend#SessionDef) = itemsQuery.filter(_.id === itemId).first
-    def toWinningBid(implicit session: JdbcBackend#SessionDef): WinningBid = WinningBid(id, bidder, item, amount)
-  }
-  object WinningBidRow extends ((Option[Long], Long, Long, BigDecimal) => WinningBidRow) {
-    def fromWinningBid(winningBid: WinningBid): WinningBidRow =
-      WinningBidRow(winningBid.id, winningBid.bidder.id.get, winningBid.item.id.get, winningBid.amount)
-  }
+  case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: PGMoney)
+  object WinningBidRow extends ((Option[Long], Long, Long, PGMoney) => WinningBidRow)
 
   class WinningBids(tag: Tag) extends Table[WinningBidRow](tag, "winningbid") {
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
-    def bidderId = column[Long]("bidder_id", O.NotNull)
-    def itemId = column[Long]("item_id", O.NotNull)
-    def amount = column[PGMoney]("amount", O.NotNull)
-    def * = (id.?, bidderId, itemId, amount.asColumnOf[BigDecimal]) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
+    def bidderId = column[Long]("bidder_id")
+    def itemId = column[Long]("item_id")
+    def amount = column[PGMoney]("amount")
+    def * = (id.?, bidderId, itemId, amount) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
 
     def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
     def itemFK = foreignKey("winningbid_item_id_fk", itemId, itemsQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)

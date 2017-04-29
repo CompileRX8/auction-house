@@ -1,22 +1,25 @@
 package controllers
 
+import javax.inject.Inject
+
 import play.api.mvc.{Action, Controller}
-import models.{BidderException, Bidder}
+import models.{BidderException, BidderHandler}
 
-import scala.util.{Failure, Success}
+import scala.concurrent.ExecutionContext
 
-object PaymentController extends Controller with Secured {
+class PaymentController @Inject()(appController: AppController, bidderHandler: BidderHandler, implicit val ec: ExecutionContext) extends Controller with Secured {
 
-  def newPayment(bidderId: Long) = Action(parse.json) { implicit request =>
+  def newPayment(bidderId: Long) = Action.async(parse.json) { implicit request =>
     val desc = (request.body \ "description").as[String]
-    val amount = (request.body \ "amount").as[BigDecimal]
-    Bidder.addPayment(bidderId, desc, amount) match {
-      case Success(payment) =>
-        AppController.pushBidders()
+    val amount = (request.body \ "amount").as[Double]
+    bidderHandler.addPayment(bidderId, desc, amount) map {
+      case payment =>
+        appController.pushBidders()
         Ok(s"Created payment for ${payment.bidder.id.get} ${payment.bidder.name} for $$ ${payment.amount}")
-      case Failure(e: BidderException) =>
+    } recover {
+      case e: BidderException =>
         BadRequest(e.message)
-      case Failure(e) =>
+      case e =>
         BadRequest(e.getMessage)
     }
   }

@@ -1,14 +1,15 @@
 package actors
 
+import javax.inject.Inject
+
 import akka.actor.{Actor, ActorRef, Props}
-import misc.Util
 import models._
 import persistence.slick.ItemsPersistenceSlick
-import play.api.libs.concurrent.Akka
-import play.api.Play.current
 
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.Future
 import scala.language.postfixOps
-import scala.util.{Failure, Success, Try}
+import scala.util.{Failure, Success}
 
 object ItemsActor {
   case object LoadFromDataSource
@@ -21,7 +22,7 @@ object ItemsActor {
   case class DeleteItem(id: Long)
   case class EditItem(item: Item)
 
-  case class EditWinningBid(id: Long, bidder: Bidder, item: Item, amount: BigDecimal)
+  case class EditWinningBid(id: Long, bidder: Bidder, item: Item, amount: Double)
   case class DeleteWinningBid(id: Long)
 
   case class GetWinningBid(id: Long)
@@ -29,35 +30,30 @@ object ItemsActor {
   case class WinningBidsByItem(item: Item)
 
   def props = Props(classOf[ItemsActor])
-
-  val itemsActor = Akka.system.actorOf(ItemsActor.props)
-  val itemsPersistence = ItemsPersistenceSlick
 }
 
-
-
-class ItemsActor extends Actor {
+class ItemsActor @Inject() (implicit val itemsPersistence: ItemsPersistenceSlick) extends Actor {
   import ItemsActor._
 
-  private def findItem(item: Item): Try[Option[Item]] = {
+  private def findItem(item: Item): Future[Option[Item]] = {
     item.id match {
       case Some(id) => itemsPersistence.itemById(id)
       case None => itemsPersistence.itemByItemNumber(item.itemNumber)
     }
   }
 
-  private def findItem(id: Long): Try[Option[Item]] = {
+  private def findItem(id: Long): Future[Option[Item]] = {
     itemsPersistence.itemById(id)
   }
 
-  private def findItem(itemNumber: String): Try[Option[Item]] = {
+  private def findItem(itemNumber: String): Future[Option[Item]] = {
     itemsPersistence.itemByItemNumber(itemNumber)
   }
 
   private def sortedItems = itemsPersistence.sortedItems
 
-  private val itemStringList = (f: Item => String) => sortedItems flatMap { items =>
-    Success(items.map(f).toList.distinct.sorted)
+  private val itemStringList = (f: Item => String) => sortedItems map { items =>
+    Success(items.map(f).distinct.sorted)
   }
 
   private def tryOrSendFailure(sender: ActorRef)(f: (ActorRef) => Unit) = {
@@ -84,7 +80,7 @@ class ItemsActor extends Actor {
     }
 
     case GetItemsByCategory(category) => tryOrSendFailure(sender) { s =>
-      s ! sortedItems.flatMap { items =>
+      s ! sortedItems.map { items =>
         Success(items filter { item => item.category.equals(category) })
       }
     }
@@ -100,8 +96,8 @@ class ItemsActor extends Actor {
     }
 
     case newItem @ Item(None, itemNumber, category, donor, description, minbid, estvalue) => tryOrSendFailure(sender) { s =>
-      s ! findItem(itemNumber).flatMap {
-        case Some(_) => Failure(new ItemException(s"Item number $itemNumber already exists"))
+      s ! findItem(itemNumber).map {
+        case Some(_) => Failure(ItemException(s"Item number $itemNumber already exists"))
         case None => itemsPersistence.create(newItem)
       }
     }
@@ -110,14 +106,14 @@ class ItemsActor extends Actor {
       // Do nothing since not maintaining our own Set[ItemInfo] anymore
 
     case DeleteItem(id) => tryOrSendFailure(sender) { s =>
-      s ! findItem(id).flatMap {
+      s ! findItem(id).map {
         case Some(item) =>
-          itemsPersistence.winningBidsByItem(item).flatMap {
+          itemsPersistence.winningBidsByItem(item).map {
             case Nil => itemsPersistence.delete(item)
-            case bids => Failure(new ItemException(s"Cannot delete item ID $id with ${bids.length} winning bids"))
+            case bids => Failure(ItemException(s"Cannot delete item ID $id with ${bids.length} winning bids"))
           }
         case _ =>
-          Failure(new ItemException(s"Cannot find item ID $id"))
+          Failure(ItemException(s"Cannot find item ID $id"))
       }
     }
 
@@ -126,12 +122,12 @@ class ItemsActor extends Actor {
     }
 
     case EditItem(item @ Item(None, _, _, _, _, _, _)) =>
-      sender ! Failure(new ItemException(s"Cannot edit item without item ID"))
+      sender ! Failure(ItemException(s"Cannot edit item without item ID"))
 
     case newWinningBid @ WinningBid(None, bidder, item, amount) => tryOrSendFailure(sender) { s =>
-      s ! findItem(item).flatMap {
+      s ! findItem(item).map {
         case Some(_) => itemsPersistence.create(newWinningBid)
-        case None => Failure(new WinningBidException(s"Unable to find item to create winning bid"))
+        case None => Failure(WinningBidException(s"Unable to find item to create winning bid"))
       }
     }
 
@@ -143,16 +139,16 @@ class ItemsActor extends Actor {
     }
 
     case EditWinningBid(id, bidder, item, amount) => tryOrSendFailure(sender) { s =>
-      s ! findItem(item).flatMap {
+      s ! findItem(item).map {
         case Some(_) => itemsPersistence.editWinningBid(id, bidder, item, amount)
-        case None => Failure(new WinningBidException(s"Unable to find item to edit winning bid"))
+        case None => Failure(WinningBidException(s"Unable to find item to edit winning bid"))
       }
     }
 
     case DeleteWinningBid(id) => tryOrSendFailure(sender) { s =>
-      s ! itemsPersistence.winningBidById(id).flatMap {
+      s ! itemsPersistence.winningBidById(id).map {
         case Some(wb) => itemsPersistence.delete(wb)
-        case None => Failure(new WinningBidException(s"Cannot find winning bid ID $id to delete"))
+        case None => Failure(WinningBidException(s"Cannot find winning bid ID $id to delete"))
       }
     }
 

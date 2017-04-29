@@ -1,27 +1,27 @@
 package persistence
 
 import akka.actor.ActorRef
-import models.{Payment, Bidder}
+import models.{Bidder, Payment}
 
-import scala.util.Try
+import scala.concurrent.Future
 
 trait BiddersPersistence {
 
-  def load(biddersActor: ActorRef): Boolean
+  def load(biddersActor: ActorRef): Future[Boolean]
 
-  def create(bidder: Bidder): Try[Bidder]
+  def create(bidder: Bidder): Future[Bidder]
 
-  def create(payment: Payment): Try[Payment]
+  def create(payment: Payment): Future[Payment]
 
-  def delete(bidder: Bidder): Try[Bidder]
+  def delete(bidder: Bidder): Future[Bidder]
 
-  def edit(bidder: Bidder): Try[Bidder]
+  def edit(bidder: Bidder): Future[Bidder]
 
-  def paymentsByBidder(bidder: Bidder): Try[List[Payment]]
+  def paymentsByBidder(bidder: Bidder): Future[List[Payment]]
 
-  def bidderById(id: Long): Try[Option[Bidder]]
+  def bidderById(id: Long): Future[Option[Bidder]]
 
-  def bidderByName(name: String): Try[Option[Bidder]]
+  def bidderByName(name: String): Future[Option[Bidder]]
 
-  def sortedBidders: Try[List[Bidder]]
+  def sortedBidders: Future[List[Bidder]]
 }

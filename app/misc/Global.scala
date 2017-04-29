@@ -1,36 +1,25 @@
 package misc
 
+import javax.inject.{Inject, Singleton}
+
 import actors.AuctionDemoActor
+import akka.actor.ActorSystem
 import play.api._
-import play.api.mvc._
-import play.api.mvc.Results._
-import play.api.libs.concurrent.Execution.Implicits._
-import scala.concurrent.{Await, Future}
-import models.{Item, Bidder}
 
+import scala.concurrent.{Await, ExecutionContext, Future}
+import models.{BidderHandler, ItemHandler}
 
-object Global extends GlobalSettings {
+@Singleton
+class Global @Inject()(app: Application, bidderHandler: BidderHandler, itemHandler: ItemHandler, actorSystem: ActorSystem, implicit val ec: ExecutionContext) {
 
-  override def onStart(app: Application) = {
-    val loadSuccessful = Bidder.loadFromDataSource flatMap { bidderSuccess =>
-      Item.loadFromDataSource map { itemSuccess =>
+    val loadSuccessful: Future[Boolean] = bidderHandler.loadFromDataSource zip itemHandler.loadFromDataSource map {
+      case (bidderSuccess, itemSuccess) =>
         bidderSuccess && itemSuccess
-      }
     }
     Await.result(loadSuccessful, Util.defaultAwaitTimeout)
 
-//    if(app.mode != Mode.Prod) {
+    if(app.mode != Mode.Prod) {
       // Just need to reference this
-//      val auctionDemoActor = AuctionDemoActor.auctionDemoActor
-//    }
-  }
-
-  override def onHandlerNotFound(request: RequestHeader) = {
-    println("HEY!!! Can't find this: " + request.path)
-    Future(Redirect(controllers.routes.AppController.index))
-  }
-
-  override def onStop(app: Application) = {
-  }
-
+      val auctionDemoActor = actorSystem.actorOf(AuctionDemoActor.props)
+    }
 }
