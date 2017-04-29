@@ -5,13 +5,49 @@ import javax.inject.Inject
 import akka.actor.ActorRef
 import models.{Bidder, Item, ItemException, WinningBid}
 import persistence.ItemsPersistence
+import play.api.db.slick.DatabaseConfigProvider
+import slick.jdbc.JdbcProfile
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class ItemsPersistenceSlick @Inject() extends SlickPersistence with ItemsPersistence {
+class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, val biddersPersistenceSlick: BiddersPersistenceSlick, implicit val ec: ExecutionContext) extends SlickPersistence with ItemsPersistence {
+
+  val dbConfig = dbConfigProvider.get[JdbcProfile]
 
   import dbConfig.profile.api._
+
+  val db = dbConfig.db
+
+  class Items(tag: Tag) extends Table[Item](tag, "item") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def itemNumber = column[String]("item_number")
+    def category = column[String]("category")
+    def donor = column[String]("donor")
+    def description = column[String]("description")
+    def minbid = column[PGMoney]("minbid")
+    def estvalue = column[PGMoney]("estvalue")
+    def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( Item.tupled, Item.unapply )
+
+    def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
+  }
+  val itemsQuery = TableQuery[Items]
+
+  case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: PGMoney)
+  object WinningBidRow extends ((Option[Long], Long, Long, PGMoney) => WinningBidRow)
+
+  class WinningBids(tag: Tag) extends Table[WinningBidRow](tag, "winningbid") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def bidderId = column[Long]("bidder_id")
+    def itemId = column[Long]("item_id")
+    def amount = column[PGMoney]("amount")
+    def * = (id.?, bidderId, itemId, amount) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
+
+    def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, biddersPersistenceSlick.biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def itemFK = foreignKey("winningbid_item_id_fk", itemId, itemsQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def itemIdbidderIdIdx = index("winningbid_item_id_bidder_id_idx", (itemId, bidderId), unique = true)
+    def bidderIditemIdIdx = index("winningbid_bidder_id_item_id_idx", (bidderId, itemId), unique = true)
+  }
+  val winningBidsQuery = TableQuery[WinningBids]
 
   override def load(itemsActor: ActorRef): Future[Boolean] = {
     val items = for(i <- itemsQuery) yield i
@@ -43,7 +79,7 @@ class ItemsPersistenceSlick @Inject() extends SlickPersistence with ItemsPersist
     val createTuple = WinningBidRow(None, winningBid.bidder.id.get, winningBid.item.id.get, winningBid.amount)
     for {
       bidder <- db.run(
-        biddersQuery.filter(_.id === winningBid.bidder.id.get).result.head
+        biddersPersistenceSlick.biddersQuery.filter(_.id === winningBid.bidder.id.get).result.head
       )
       item <- db.run(
         itemsQuery.filter(_.id === winningBid.item.id.get).result.head
@@ -101,7 +137,7 @@ class ItemsPersistenceSlick @Inject() extends SlickPersistence with ItemsPersist
   override def winningBidById(id: Long): Future[Option[WinningBid]] = {
     val winningBidOpt = for {
       wb <- winningBidsQuery if wb.id === id
-      b <- biddersQuery if b.id === wb.bidderId
+      b <- biddersPersistenceSlick.biddersQuery if b.id === wb.bidderId
       i <- itemsQuery if i.id === wb.itemId
     } yield {
       (wb.id.?, b, i, wb.amount).mapTo[WinningBid]
@@ -112,7 +148,7 @@ class ItemsPersistenceSlick @Inject() extends SlickPersistence with ItemsPersist
   override def winningBidsByItem(item: Item): Future[List[WinningBid]] = {
     val q = for {
       wb <- winningBidsQuery if wb.itemId === item.id.get
-      b <- biddersQuery if b.id === wb.bidderId
+      b <- biddersPersistenceSlick.biddersQuery if b.id === wb.bidderId
       i <- itemsQuery if i.id === wb.itemId
     } yield {
       (wb.id.?, b, i, wb.amount).mapTo[WinningBid]
@@ -123,7 +159,7 @@ class ItemsPersistenceSlick @Inject() extends SlickPersistence with ItemsPersist
   override def winningBidsByBidder(bidder: Bidder): Future[List[WinningBid]] = {
     val q = for {
       wb <- winningBidsQuery if wb.bidderId === bidder.id.get
-      b <- biddersQuery if b.id === wb.bidderId
+      b <- biddersPersistenceSlick.biddersQuery if b.id === wb.bidderId
       i <- itemsQuery if i.id === wb.itemId
     } yield {
       (wb.id.?, b, i, wb.amount).mapTo[WinningBid]

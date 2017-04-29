@@ -5,13 +5,43 @@ import javax.inject.Inject
 import akka.actor.ActorRef
 import models.{Bidder, BidderException, Payment}
 import persistence.BiddersPersistence
+import play.api.db.slick.DatabaseConfigProvider
+import slick.jdbc.JdbcProfile
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.{ExecutionContext, Future}
 
-class BiddersPersistenceSlick @Inject() extends SlickPersistence with BiddersPersistence  {
+class BiddersPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, implicit val ec: ExecutionContext) extends SlickPersistence with BiddersPersistence  {
+
+  val dbConfig = dbConfigProvider.get[JdbcProfile]
 
   import dbConfig.profile.api._
+
+  val db = dbConfig.db
+
+  class Bidders(tag: Tag) extends Table[Bidder](tag, "bidder") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def name = column[String]("name")
+    def * = (id.?, name) <> ( Bidder.tupled , Bidder.unapply )
+
+    def nameIdx = index("bidder_name_idx", name, unique = true)
+  }
+  val biddersQuery = TableQuery[Bidders]
+
+  case class PaymentRow(id: Option[Long], bidderId: Long, description: String, amount: PGMoney)
+  object PaymentRow extends ((Option[Long], Long, String, PGMoney) => PaymentRow)
+
+  class Payments(tag: Tag) extends Table[PaymentRow](tag, "payment") {
+    def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
+    def bidderId = column[Long]("bidder_id")
+    def description = column[String]("description")
+    def amount = column[PGMoney]("amount")
+
+    def bidderFK = foreignKey("payment_bidder_id_fk", bidderId, biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
+    def bidderIdx = index("payment_bidder_id_idx", bidderId)
+
+    def * = (id.?, bidderId, description, amount) <> ( PaymentRow.tupled , PaymentRow.unapply )
+  }
+  val paymentsQuery = TableQuery[Payments]
 
   override def load(biddersActor: ActorRef): Future[Boolean] = {
     val bidders = for(b <- biddersQuery) yield b

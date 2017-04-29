@@ -3,34 +3,34 @@
 # ~~~~
 
 # Tasks
-GET         /                                     @controllers.AppController.index
+GET         /                                     controllers.AppController.index
 
-GET         /bidders                              @controllers.BidderController.bidders
-POST        /bidders                              @controllers.BidderController.newBidder
-POST        /bidders/:bidderId/delete             @controllers.BidderController.deleteBidder(bidderId: Long)
-POST        /bidders/:bidderId/edit               @controllers.BidderController.editBidder(bidderId: Long)
+GET         /bidders                              controllers.BidderController.bidders
+POST        /bidders                              controllers.BidderController.newBidder
+POST        /bidders/:bidderId/delete             controllers.BidderController.deleteBidder(bidderId: Long)
+POST        /bidders/:bidderId/edit               controllers.BidderController.editBidder(bidderId: Long)
 
-GET         /items                                @controllers.ItemController.items
-POST        /items                                @controllers.ItemController.newItem
-POST        /items/:itemId/delete                 @controllers.ItemController.deleteItem(itemId: Long)
-POST        /items/:itemId/edit                   @controllers.ItemController.editItem(itemId: Long)
-POST        /items/:itemId/bid                    @controllers.ItemController.addWinningBid(itemId: Long)
-POST        /items/:winningBidId/editbid          @controllers.ItemController.editWinningBid(winningBidId: Long)
-POST        /items/:winningBidId/deletebid        @controllers.ItemController.deleteWinningBid(winningBidId: Long)
+GET         /items                                controllers.ItemController.items
+POST        /items                                controllers.ItemController.newItem
+POST        /items/:itemId/delete                 controllers.ItemController.deleteItem(itemId: Long)
+POST        /items/:itemId/edit                   controllers.ItemController.editItem(itemId: Long)
+POST        /items/:itemId/bid                    controllers.ItemController.addWinningBid(itemId: Long)
+POST        /items/:winningBidId/editbid          controllers.ItemController.editWinningBid(winningBidId: Long)
+POST        /items/:winningBidId/deletebid        controllers.ItemController.deleteWinningBid(winningBidId: Long)
 
-POST        /payments/:bidderId                   @controllers.PaymentController.newPayment(bidderId: Long)
+POST        /payments/:bidderId                   controllers.PaymentController.newPayment(bidderId: Long)
 
-GET         /biddersFeed                          @controllers.AppController.biddersFeed
-GET         /pushBidders                          @controllers.AppController.pushBidders
-GET         /itemsFeed                            @controllers.AppController.itemsFeed
-GET         /pushItems                            @controllers.AppController.pushItems
+GET         /biddersFeed                          controllers.AppController.biddersFeed
+GET         /pushBidders                          controllers.AppController.pushBidders
+GET         /itemsFeed                            controllers.AppController.itemsFeed
+GET         /pushItems                            controllers.AppController.pushItems
 
-POST        /login                                @controllers.AppController.login
-POST        /logout                               @controllers.AppController.logout
+POST        /login                                controllers.AppController.login
+POST        /logout                               controllers.AppController.logout
 
 # Map static resources from the /public folder to the /assets URL path
 GET         /webjars/*file                        @controllers.WebJarAssets.at(file)
 
-GET         /javascripts/routes                   @controllers.AppController.javascriptRoutes
+GET         /javascripts/routes                   controllers.AppController.javascriptRoutes
 
 GET         /*file                                @controllers.Assets.at(path="/public", file)
