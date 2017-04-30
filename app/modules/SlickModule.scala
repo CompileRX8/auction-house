@@ -6,7 +6,7 @@ import persistence.slick.{BiddersPersistenceSlick, ItemsPersistenceSlick}
 
 class SlickModule extends AbstractModule {
   def configure = {
-    bind(classOf[BiddersPersistence]).to(classOf[BiddersPersistenceSlick])
-    bind(classOf[ItemsPersistence]).to(classOf[ItemsPersistenceSlick])
+    bind(classOf[BiddersPersistence]).to(classOf[BiddersPersistenceSlick]).asEagerSingleton()
+    bind(classOf[ItemsPersistence]).to(classOf[ItemsPersistenceSlick]).asEagerSingleton()
   }
 }

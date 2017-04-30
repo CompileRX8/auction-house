@@ -1,6 +1,6 @@
 package persistence.slick
 
-import javax.inject.Inject
+import javax.inject.{Inject, Singleton}
 
 import akka.actor.ActorRef
 import models.{Bidder, BidderException, ItemException, Payment}
@@ -10,6 +10,7 @@ import slick.jdbc.JdbcProfile
 
 import scala.concurrent.{ExecutionContext, Future}
 
+@Singleton
 class BiddersPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, implicit val ec: ExecutionContext) extends SlickPersistence with BiddersPersistence  {
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
