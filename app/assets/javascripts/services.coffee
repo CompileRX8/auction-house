@@ -116,7 +116,7 @@ define ['angular'],
                 @pushBidders()
                 @pushItems()
 
-            @_updateInterval = $interval(callPush, 1000)
+            @_updateInterval = $interval(callPush, 10000)
 
             console.log "Created DataService"
 
