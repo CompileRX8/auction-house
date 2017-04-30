@@ -17,4 +17,4 @@ addSbtPlugin("com.typesafe.sbt" % "sbt-gzip" % "1.0.0")
 
 addSbtPlugin("com.typesafe.sbt" % "sbt-jshint" % "1.0.3")
 
-addSbtPlugin("com.heroku" % "sbt-heroku" % "0.5.1")
+addSbtPlugin("com.heroku" % "sbt-heroku" % "1.0.1")
