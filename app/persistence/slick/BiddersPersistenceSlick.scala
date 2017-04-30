@@ -42,6 +42,7 @@ class BiddersPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider
       case Some(bidder) => Payment(id, bidder, description, amount)
       case None => throw ItemException(s"Unable to create payment from row with bidderId $bidderId")
     }
+    def toPayment(bidder: Bidder) : Future[Payment] = Future.successful(Payment(id, bidder, description, amount))
   }
   object PaymentRow extends ((Option[Long], Long, String, BigDecimal) => PaymentRow) {
     def fromPayment(payment: Payment): Future[PaymentRow] = Future.successful(PaymentRow(payment.id, payment.bidder.id.get, payment.description, payment.amount))
@@ -126,7 +127,7 @@ class BiddersPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider
   }
 
   override def paymentsByBidder(bidder: Bidder): Future[List[Payment]] =
-    db.run(paymentsQuery.filter(_.bidderId === bidder.id.get).result.map(mapSeq(_.toPayment))).flatMap(Future.sequence(_))
+    db.run(paymentsQuery.filter(_.bidderId === bidder.id.get).result.map(mapSeq(_.toPayment(bidder)))).flatMap(Future.sequence(_))
 
   override def bidderById(id: Long): Future[Option[Bidder]] =
     db.run(biddersQuery.filter(_.id === id).result.map(mapSeq(_.toBidder))).flatMap(Future.sequence(_)).map(_.headOption)

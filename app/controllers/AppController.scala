@@ -51,7 +51,7 @@ class AppController @Inject()(webJarAssets: WebJarAssets, bidderHandler: BidderH
 
   def pushBidders = Action.async { req =>
     bidderHandler.currentBidders() map {
-      case biddersData =>
+      biddersData =>
         logger.debug(s"biddersData: $biddersData")
         val jsonBiddersData = Json.toJson(biddersData)
         logger.debug(s"jsonBiddersData: $jsonBiddersData")
@@ -77,7 +77,7 @@ class AppController @Inject()(webJarAssets: WebJarAssets, bidderHandler: BidderH
 
   def pushItems = Action.async { req =>
     itemHandler.currentItems() map {
-      case itemsData =>
+      itemsData =>
         logger.debug(s"itemsData: $itemsData")
         val jsonItemsData = Json.toJson(itemsData)
         logger.debug(s"jsonItemsData: $jsonItemsData")

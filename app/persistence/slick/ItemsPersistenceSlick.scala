@@ -47,14 +47,40 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
     def toWinningBid: Future[WinningBid] = biddersPersistenceSlick.bidderById(bidderId).zip(itemById(itemId)) map {
       case (Some(bidder), Some(item)) => WinningBid(id, bidder, item, amount)
       case (Some(_), None) => throw ItemException(s"Unable to create winning bid with invalid item id $itemId")
-      case (_, Some(_)) => throw BidderException(s"Unable to create winning bid with invalid bidder id $bidderId")
+      case (None, Some(_)) => throw BidderException(s"Unable to create winning bid with invalid bidder id $bidderId")
       case _ => throw ItemException(s"Unable to create winning bid with invalid item id $itemId and bidder id $bidderId")
+    }
+
+    def toWinningBid(bidder: Bidder, item: Item): Future[WinningBid] = Future.successful(WinningBid(id, bidder, item, amount))
+
+    def toWinningBid(bidder: Bidder): Future[WinningBid] = itemById(itemId) flatMap {
+      case Some(item) => toWinningBid(bidder, item)
+      case None => throw ItemException(s"Unable to create winning bid with invalid item id $itemId")
+    }
+
+    def toWinningBid(item: Item): Future[WinningBid] = biddersPersistenceSlick.bidderById(bidderId) flatMap {
+      case Some(bidder) => toWinningBid(bidder, item)
+      case None => throw BidderException(s"Unable to create winning bid with invalid bidder id $bidderId")
     }
   }
   object WinningBidRow extends ((Option[Long], Long, Long, BigDecimal) => WinningBidRow) {
     def fromWinningBid(winningBid: WinningBid): Future[WinningBidRow] = Future.successful(WinningBidRow(winningBid.id, winningBid.bidder.id.get, winningBid.item.id.get, winningBid.amount))
 
     def toWinningBid(row: WinningBidRow) = row.toWinningBid
+
+    def toWinningBid(rowTuple: (WinningBidRow, biddersPersistenceSlick.BidderRow, ItemRow)): Future[WinningBid] = rowTuple._2.toBidder flatMap { bidder =>
+      rowTuple._3.toItem flatMap { item =>
+        rowTuple._1.toWinningBid(bidder, item)
+      }
+    }
+
+    def toWinningBid(item: Item)(rowTuple: (WinningBidRow, biddersPersistenceSlick.BidderRow)): Future[WinningBid] = rowTuple._2.toBidder flatMap { bidder =>
+      rowTuple._1.toWinningBid(bidder, item)
+    }
+
+    def toWinningBid(bidder: Bidder)(rowTuple: (WinningBidRow, ItemRow)): Future[WinningBid] = rowTuple._2.toItem flatMap { item =>
+      rowTuple._1.toWinningBid(bidder, item)
+    }
   }
 
   class WinningBids(tag: Tag) extends Table[WinningBidRow](tag, "winningbid") {
@@ -158,22 +184,41 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
   }
   override def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Future[WinningBid] = ???
 
-  override def winningBidById(id: Long): Future[Option[WinningBid]] =
-    db.run(winningBidsQuery.filter(_.id === id).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_)).map(_.headOption)
+  override def winningBidById(id: Long): Future[Option[WinningBid]] = {
+    val q = for {
+      wbRow <- winningBidsQuery if wbRow.id === id
+      bRow <- biddersPersistenceSlick.biddersQuery if bRow.id === wbRow.bidderId
+      iRow <- itemsQuery if iRow.id === wbRow.itemId
+    } yield (wbRow, bRow, iRow)
+    db.run(q.result.map(mapSeq(WinningBidRow.toWinningBid))).flatMap(Future.sequence(_)).map(_.headOption)
+  }
+//    db.run(winningBidsQuery.filter(_.id === id).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_)).map(_.headOption)
 
-  override def winningBidsByItem(item: Item): Future[List[WinningBid]] =
-    db.run(winningBidsQuery.filter(_.itemId === item.id.get).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_))
+  override def winningBidsByItem(item: Item): Future[List[WinningBid]] = {
+    val q = for {
+      wbRow <- winningBidsQuery if wbRow.itemId === item.id.get
+      bRow <- biddersPersistenceSlick.biddersQuery if bRow.id === wbRow.bidderId
+    } yield (wbRow, bRow)
+    db.run(q.result.map(mapSeq(WinningBidRow.toWinningBid(item)))).flatMap(Future.sequence(_))
+  }
+//    db.run(winningBidsQuery.filter(_.itemId === item.id.get).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_))
 
-  override def winningBidsByBidder(bidder: Bidder): Future[List[WinningBid]] =
-    db.run(winningBidsQuery.filter(_.bidderId === bidder.id.get).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_))
+  override def winningBidsByBidder(bidder: Bidder): Future[List[WinningBid]] = {
+    val q = for {
+      wbRow <- winningBidsQuery if wbRow.bidderId === bidder.id.get
+      iRow <- itemsQuery if iRow.id === wbRow.itemId
+    } yield (wbRow, iRow)
+    db.run(q.result.map(mapSeq(WinningBidRow.toWinningBid(bidder)))).flatMap(Future.sequence(_))
+  }
+//    db.run(winningBidsQuery.filter(_.bidderId === bidder.id.get).result.map(mapSeq(_.toWinningBid))).flatMap(Future.sequence(_))
 
   override def sortedItems: Future[List[Item]] =
-    db.run(itemsQuery.sortBy(_.itemNumber).result.map(mapSeq(ItemRow.toItem))).flatMap(Future.sequence(_))
+    db.run(itemsQuery.sortBy(_.itemNumber).result.map(mapSeq(_.toItem))).flatMap(Future.sequence(_))
 
   override def itemById(id: Long): Future[Option[Item]] =
-    db.run(itemsQuery.filter(_.id === id).result.map(mapSeq(ItemRow.toItem))).flatMap(Future.sequence(_)).map(_.headOption)
+    db.run(itemsQuery.filter(_.id === id).result.map(mapSeq(_.toItem))).flatMap(Future.sequence(_)).map(_.headOption)
 
   override def itemByItemNumber(itemNumber: String): Future[Option[Item]] =
-    db.run(itemsQuery.filter(_.itemNumber === itemNumber).result.map(mapSeq(ItemRow.toItem))).flatMap(Future.sequence(_)).map(_.headOption)
+    db.run(itemsQuery.filter(_.itemNumber === itemNumber).result.map(mapSeq(_.toItem))).flatMap(Future.sequence(_)).map(_.headOption)
 
 }

@@ -112,11 +112,11 @@ define ['angular'],
             callPush = () =>
               now = Date.now()
               timeSinceLastUpdate = now - @_lastUpdate
-              if timeSinceLastUpdate > 5000
+              if timeSinceLastUpdate > 15000
                 @pushBidders()
                 @pushItems()
 
-            @_updateInterval = $interval(callPush, 10000)
+            @_updateInterval = $interval(callPush, 1000)
 
             console.log "Created DataService"
 
