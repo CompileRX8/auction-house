@@ -8,7 +8,7 @@ libraryDependencies ++= Seq(
   jdbc
   ,"com.typesafe.play" %% "play-slick" % "2.1.0"
   ,"org.webjars" %% "webjars-play" % "2.5.0-4"
-  ,"org.webjars" % "requirejs" % "2.3.3"
+//  ,"org.webjars" % "requirejs" % "2.3.3"
 //  ,"org.webjars" % "underscorejs" % "1.8.3"
 //  ,"org.webjars" % "jquery" % "1.12.4"
   ,"org.webjars" % "angularjs" % "1.3.15" //exclude("org.webjars", "jquery")
