@@ -1,0 +1,84 @@
+html,
+body {
+    height: 100%;
+    overflow: hidden;
+}
+.basics-nav {
+    background-color: darkgreen;
+}
+.basics-nav .navbar-brand {
+    color: #e3ffc7;
+}
+.basics-nav .navbar-nav li a {
+    color: #e3ffc7;
+}
+.basics-nav .navbar-nav .dropdown-menu a {
+    color: #000;
+}
+.app-form input.ng-dirty.ng-invalid {
+    background: lightpink;
+}
+.app-form input.ng-dirty.ng-valid {
+    background: lightgreen;
+}
+#main-header,
+#main-footer {
+    display: block;
+    height: 50px;
+}
+#main-section {
+    height: calc(100% - 100px);
+    display: block;
+    overflow-y: auto;
+}
+.search-table {
+    width: 100%;
+}
+.search-table thead,
+.search-table tbody,
+.search-table tfoot {
+    display: block;
+}
+.search-table thead tr,
+.search-table tbody tr,
+.search-table tfoot tr {
+    display: block;
+}
+.search-table thead tr th,
+.search-table tbody tr th,
+.search-table tfoot tr th,
+.search-table thead tr td,
+.search-table tbody tr td,
+.search-table tfoot tr td {
+    display: block;
+    float: left;
+}
+.search-table thead tr:after,
+.search-table tbody tr:after,
+.search-table tfoot tr:after {
+    content: ' ';
+    display: block;
+    visibility: hidden;
+    clear: both;
+}
+.search-table tbody {
+    overflow-y: auto;
+    height: 300px;
+}
+.recon-details {
+    width: 100%;
+    overflow-y: auto;
+    height: 65vh;
+}
+.recon-details div > div {
+    display: block;
+}
+/* AngularJS */
+[ng\:cloak],
+[ng-cloak],
+[data-ng-cloak],
+[x-ng-cloak],
+.ng-cloak,
+.x-ng-cloak {
+    display: none;
+}
