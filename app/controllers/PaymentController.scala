@@ -7,7 +7,7 @@ import models.{BidderException, BidderHandler}
 
 import scala.concurrent.ExecutionContext
 
-class PaymentController @Inject()(appController: AppController, bidderHandler: BidderHandler, implicit val ec: ExecutionContext) extends Controller with Secured {
+class PaymentController @Inject()(appController: AppController, bidderHandler: BidderHandler)(implicit val ec: ExecutionContext) extends Controller with Secured {
 
   def newPayment(bidderId: Long) = Action.async(parse.json) { implicit request =>
     val desc = (request.body \ "description").as[String]

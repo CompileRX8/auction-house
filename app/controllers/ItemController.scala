@@ -9,7 +9,7 @@ import play.api.libs.json.{JsValue, Json}
 
 import scala.concurrent.{ExecutionContext, Future}
 
-class ItemController @Inject()(appController: AppController, bidderController: BidderController, itemHandler: ItemHandler, bidderHandler: BidderHandler, implicit val ec: ExecutionContext) extends Controller {
+class ItemController @Inject()(appController: AppController, bidderController: BidderController, itemHandler: ItemHandler, bidderHandler: BidderHandler)(implicit val ec: ExecutionContext) extends Controller {
 
   val logger = Logger(classOf[ItemController])
 

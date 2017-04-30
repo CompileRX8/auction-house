@@ -44,7 +44,7 @@ class BiddersActor @Inject()(biddersPersistence: BiddersPersistence, itemsPersis
   }
 
   override def receive = {
-    case LoadFromDataSource =>
+/*    case LoadFromDataSource =>
       tryOrSendFailure(sender) { s =>
         s ! biddersPersistence.load(self)
       }
@@ -106,7 +106,7 @@ class BiddersActor @Inject()(biddersPersistence: BiddersPersistence, itemsPersis
     case Payments(bidder) => tryOrSendFailure(sender) { s =>
       s ! biddersPersistence.paymentsByBidder(bidder)
     }
-
+*/
     case _ =>
   }
 

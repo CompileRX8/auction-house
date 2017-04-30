@@ -65,7 +65,7 @@ class ItemsActor @Inject()(itemsPersistence: ItemsPersistenceSlick) extends Acto
   }
 
   override def receive = {
-    case LoadFromDataSource => tryOrSendFailure(sender) { s =>
+/*    case LoadFromDataSource => tryOrSendFailure(sender) { s =>
       s ! itemsPersistence.load(self)
     }
 
@@ -157,5 +157,7 @@ class ItemsActor @Inject()(itemsPersistence: ItemsPersistenceSlick) extends Acto
     case WinningBidsByItem(item) => tryOrSendFailure(sender) { s =>
       s ! itemsPersistence.winningBidsByItem(item)
     }
+*/
+    case _ =>
   }
 }

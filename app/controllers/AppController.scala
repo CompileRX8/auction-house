@@ -15,7 +15,7 @@ import play.api.routing.JavaScriptReverseRouter
 
 import scala.concurrent.ExecutionContext
 
-class AppController @Inject()(webJarAssets: WebJarAssets, bidderHandler: BidderHandler, itemHandler: ItemHandler, implicit val ec: ExecutionContext) extends Controller with Secured{
+class AppController @Inject()(webJarAssets: WebJarAssets, bidderHandler: BidderHandler, itemHandler: ItemHandler)(implicit val ec: ExecutionContext) extends Controller with Secured{
 
   val logger = Logger(classOf[AppController])
 

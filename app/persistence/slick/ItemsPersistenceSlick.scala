@@ -11,7 +11,7 @@ import slick.jdbc.JdbcProfile
 import scala.concurrent.{ExecutionContext, Future}
 
 @Singleton
-class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, val biddersPersistenceSlick: BiddersPersistenceSlick, implicit val ec: ExecutionContext) extends SlickPersistence with ItemsPersistence {
+class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, val biddersPersistenceSlick: BiddersPersistenceSlick)(implicit val ec: ExecutionContext) extends SlickPersistence with ItemsPersistence {
 
   val dbConfig = dbConfigProvider.get[JdbcProfile]
 
@@ -72,7 +72,7 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
   val winningBidsQuery = TableQuery[WinningBids]
 
   override def load(itemsActor: ActorRef): Future[Boolean] = {
-    val items = for(i <- itemsQuery) yield i
+/*    val items = for(i <- itemsQuery) yield i
     val winningBids = for(wb <- winningBidsQuery) yield wb
     val itemsUpdate = db.run(items.to[List].result).collect {
       case i =>
@@ -87,7 +87,8 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
     itemsUpdate.zip(winningBidsUpdate).map {
       case (i, wb) => i && wb
       case _ => false
-    }
+    } */
+    Future.successful(true)
   }
 
   override def create(item: Item): Future[Item] = {

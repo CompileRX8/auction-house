@@ -21,7 +21,7 @@ object Payment extends((Option[Long], Bidder, String, BigDecimal) => Payment)
 case class Bidder(id: Option[Long], name: String)
 object Bidder extends ((Option[Long], String) => Bidder)
 
-class BidderHandler @Inject()(biddersPersistence: BiddersPersistence, itemHandler: ItemHandler, implicit val ec: ExecutionContext) {
+class BidderHandler @Inject()(biddersPersistence: BiddersPersistence, itemHandler: ItemHandler)(implicit val ec: ExecutionContext) {
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]

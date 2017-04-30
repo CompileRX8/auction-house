@@ -17,7 +17,7 @@ case class ItemData(item: Item, winningBids: List[WinningBid])
 case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal)
 object Item extends ((Option[Long], String, String, String, String, BigDecimal, BigDecimal) => Item)
 
-class ItemHandler @Inject()(itemsPersistence: ItemsPersistence, implicit val ec: ExecutionContext) {
+class ItemHandler @Inject()(itemsPersistence: ItemsPersistence)(implicit val ec: ExecutionContext) {
   implicit val timeout = Timeout(15 seconds)
 
   implicit val bidderFormat = Json.format[Bidder]

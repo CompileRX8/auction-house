@@ -57,7 +57,7 @@ class AuctionDemoActor @Inject()(actorSystem: ActorSystem, itemHandler: ItemHand
 
     case ShutMeDown =>
       shutMeDown()
-
+/*
     case AuctionAction =>
       random.nextInt(10) match {
         case 0 =>
@@ -150,6 +150,8 @@ class AuctionDemoActor @Inject()(actorSystem: ActorSystem, itemHandler: ItemHand
             log.warning(s"Unable to add winning bid: ${e.getMessage}")
         }
       }
+*/
+    case _ =>
   }
 }
 
