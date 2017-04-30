@@ -1,33 +1,27 @@
 package models
 
-import javax.inject.{ Inject, Singleton }
-
-import actors.BiddersActor
-import akka.actor.ActorSystem
+import javax.inject.Inject
 
 import scala.concurrent.duration._
-import akka.pattern.ask
 import akka.util.Timeout
 import play.api.libs.json.Json
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.language.postfixOps
+import persistence.BiddersPersistence
+import play.api.Logger
 
 case class BidderException(message: String, cause: Exception = null) extends Exception
 
 case class BidderData(bidder: Bidder, payments: List[Payment], winningBids: List[WinningBid])
 
-case class Payment(id: Option[Long], bidder: Bidder, description: String, amount: Double)
-object Payment extends((Option[Long], Bidder, String, Double) => Payment)
+case class Payment(id: Option[Long], bidder: Bidder, description: String, amount: BigDecimal)
+object Payment extends((Option[Long], Bidder, String, BigDecimal) => Payment)
 
 case class Bidder(id: Option[Long], name: String)
 object Bidder extends ((Option[Long], String) => Bidder)
 
-@Singleton
-class BidderHandler @Inject()(actorSystem: ActorSystem, itemHandler: ItemHandler, implicit val ec: ExecutionContext) {
-  import BiddersActor._
-
-  private val biddersActor = actorSystem.actorOf(BiddersActor.props)
+class BidderHandler @Inject()(biddersPersistence: BiddersPersistence, itemHandler: ItemHandler, implicit val ec: ExecutionContext) {
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
@@ -38,31 +32,61 @@ class BidderHandler @Inject()(actorSystem: ActorSystem, itemHandler: ItemHandler
   implicit val timeout = Timeout(15 seconds)
 
   def payments(bidder: Bidder): Future[List[Payment]] =
-    (biddersActor ? Payments(bidder)).mapTo[List[Payment]]
+    biddersPersistence.paymentsByBidder(bidder)
+//    (biddersActor ? Payments(bidder)).mapTo[Future[List[Payment]]].flatMap( fList => fList )
 
-  def paymentsTotal(bidder: Bidder): Future[Double] = payments(bidder) map { ps =>
-    (0.0 /: ps) { (sum, p) => sum + p.amount }
+  def paymentsTotal(bidder: Bidder): Future[BigDecimal] = payments(bidder) map { ps =>
+    (BigDecimal(0.0) /: ps) { (sum, p) => sum + p.amount }
   }
 
-  def addPayment(bidderId: Long, description: String, amount: Double): Future[Payment] =
+  def addPayment(bidderId: Long, description: String, amount: BigDecimal): Future[Payment] =
     get(bidderId) flatMap {
       case Some(bidder) =>
-       (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Payment]
+        biddersPersistence.create(Payment(None, bidder, description, amount))
+//       (biddersActor ? Payment(None, bidder, description, amount)).mapTo[Future[Payment]].flatMap( fPayment => fPayment )
       case None =>
         Future.failed(BidderException(s"Cannot find bidder ID $bidderId to add payment"))
     }
 
-  def all(): Future[List[Bidder]] = (biddersActor ? GetBidders).mapTo[List[Bidder]]
+  def all(): Future[List[Bidder]] = biddersPersistence.sortedBidders
+//    val getBiddersResponse: Future[Future[List[Bidder]]] = (biddersActor ? GetBidders).mapTo[Future[List[Bidder]]]
+//    getBiddersResponse.flatMap( fList => {
+//      Logger.info(s"After all that fList is a ${fList.getClass}")
+//      fList
+//    } )
+//  }
 
-  def get(id: Long): Future[Option[Bidder]] = (biddersActor ? GetBidder(id)).mapTo[Option[Bidder]]
+  def get(id: Long): Future[Option[Bidder]] = {
+    biddersPersistence.bidderById(id)
+//    (biddersActor ? GetBidder(id)).mapTo[Future[Option[Bidder]]].flatMap( fOpt => fOpt )
+  }
 
-  def create(name: String): Future[Bidder] = (biddersActor ? Bidder(None, name)).mapTo[Bidder]
+  def create(name: String): Future[Bidder] = {
+    biddersPersistence.create(Bidder(None, name))
+/*
+    (biddersActor ? Bidder(None, name)).mapTo[Future[Future[Bidder]]]
+      .flatMap( fBidder => {
+        Logger.info(s"fBidder is a ${fBidder.getClass}")
+        fBidder
+      }.flatMap( f => {
+        Logger.info(s"f is a ${f.getClass}")
+        f
+      } )
+      )
+*/
+  }
 
-  def delete(id: Long): Future[Bidder] = (biddersActor ? DeleteBidder(id)).mapTo[Bidder]
+  def delete(id: Long): Future[Bidder] = {
+    biddersPersistence.delete(Bidder(Some(id), ""))
+//    (biddersActor ? DeleteBidder(id)).mapTo[Future[Bidder]].flatMap( fBidder => fBidder )
+  }
 
-  def edit(id: Long, name: String): Future[Bidder] = (biddersActor ? EditBidder(Bidder(Some(id), name))).mapTo[Bidder]
+  def edit(id: Long, name: String): Future[Bidder] = {
+    biddersPersistence.edit(Bidder(Some(id), name))
+//    (biddersActor ? EditBidder(Bidder(Some(id), name))).mapTo[Future[Bidder]].flatMap( fBidder => fBidder )
+  }
 
-  def totalOwed(bidderId: Long): Future[Double] = {
+  def totalOwed(bidderId: Long): Future[BigDecimal] = {
     get(bidderId) flatMap {
       case Some(bidder) =>
         val totalOwed = itemHandler.totalWinningBidsByBidder(bidder)
@@ -78,11 +102,14 @@ class BidderHandler @Inject()(actorSystem: ActorSystem, itemHandler: ItemHandler
 
   def currentBidders(): Future[List[BidderData]] = {
     all() flatMap { bidders =>
+//      Logger.info(s"currentBidders sees bidders as a ${bidders.getClass}")
       val listFutureBidderData = bidders map { bidder =>
+//        Logger.info(s"currentBidders sees bidder as a ${bidder.getClass}")
         val bidderPayments = payments(bidder)
         val bidderWinningBids = itemHandler.winningBids(bidder)
         bidderPayments flatMap { bps =>
           bidderWinningBids map { bwbs =>
+//            Logger.info(s"currentBidders sees bps as a ${bps.getClass} and bwbs as a ${bwbs.getClass}")
             BidderData(bidder, bps, bwbs)
           }
         }
@@ -92,6 +119,7 @@ class BidderHandler @Inject()(actorSystem: ActorSystem, itemHandler: ItemHandler
   }
 
   def loadFromDataSource(): Future[Boolean] = {
-    (biddersActor ? LoadFromDataSource).mapTo[Boolean]
+    Future.successful(true)
+//    (biddersActor ? LoadFromDataSource).mapTo[Future[Boolean]].flatMap(b => b)
   }
 }

@@ -2,7 +2,7 @@ package actors
 
 import javax.inject.Inject
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef}
 import models._
 import persistence.slick.ItemsPersistenceSlick
 
@@ -28,11 +28,9 @@ object ItemsActor {
   case class GetWinningBid(id: Long)
   case class WinningBidsByBidder(bidder: Bidder)
   case class WinningBidsByItem(item: Item)
-
-  def props = Props(classOf[ItemsActor])
 }
 
-class ItemsActor @Inject() (implicit val itemsPersistence: ItemsPersistenceSlick) extends Actor {
+class ItemsActor @Inject()(itemsPersistence: ItemsPersistenceSlick) extends Actor {
   import ItemsActor._
 
   private def findItem(item: Item): Future[Option[Item]] = {

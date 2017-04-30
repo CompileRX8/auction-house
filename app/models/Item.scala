@@ -1,15 +1,11 @@
 package models
 
-import javax.inject.{Inject, Singleton}
-
-import actors.ItemsActor
+import javax.inject.Inject
 
 import scala.concurrent.{ExecutionContext, Future}
 import scala.concurrent.duration._
-import akka.pattern.ask
 import akka.util.Timeout
-import actors.ItemsActor._
-import akka.actor.ActorSystem
+import persistence.ItemsPersistence
 import play.api.libs.json.Json
 
 import scala.language.postfixOps
@@ -18,14 +14,11 @@ case class ItemException(message: String, cause: Exception = null) extends Excep
 
 case class ItemData(item: Item, winningBids: List[WinningBid])
 
-case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: Double, estvalue: Double)
-object Item extends ((Option[Long], String, String, String, String, Double, Double) => Item)
+case class Item(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal)
+object Item extends ((Option[Long], String, String, String, String, BigDecimal, BigDecimal) => Item)
 
-@Singleton
-class ItemHandler @Inject()(actorSystem: ActorSystem, implicit val ec: ExecutionContext) {
+class ItemHandler @Inject()(itemsPersistence: ItemsPersistence, implicit val ec: ExecutionContext) {
   implicit val timeout = Timeout(15 seconds)
-
-  private val itemsActor = actorSystem.actorOf(ItemsActor.props)
 
   implicit val bidderFormat = Json.format[Bidder]
   implicit val paymentFormat = Json.format[Payment]
@@ -33,45 +26,82 @@ class ItemHandler @Inject()(actorSystem: ActorSystem, implicit val ec: Execution
   implicit val winningBidFormat = Json.format[WinningBid]
   implicit val itemDataFormat = Json.format[ItemData]
 
-  def allCategories(): Future[List[String]] = (itemsActor ? GetCategories).mapTo[List[String]]
-  def allDonors(): Future[List[String]] = (itemsActor ? GetDonors).mapTo[List[String]]
-  def all(): Future[List[Item]] = (itemsActor ? GetItems).mapTo[List[Item]]
+  private val itemStringList = (f: Item => String) => all() map { items =>
+    items.map(f).distinct.sorted
+  }
 
-  def allByCategory(category: String): Future[List[Item]] = (itemsActor ? GetItemsByCategory(category)).mapTo[List[Item]]
+  def allCategories(): Future[List[String]] = {
+    itemStringList { _.category }
+//    (itemsActor ? GetCategories).mapTo[List[String]]
+  }
+  def allDonors(): Future[List[String]] = {
+    itemStringList { _.donor }
+//    (itemsActor ? GetDonors).mapTo[List[String]]
+  }
+  def all(): Future[List[Item]] = {
+    itemsPersistence.sortedItems
+//    (itemsActor ? GetItems).mapTo[Future[List[Item]]].flatMap( fList => fList )
+  }
 
-  def get(id: Long): Future[Option[Item]] = (itemsActor ? GetItem(id)).mapTo[Option[Item]]
+  def allByCategory(category: String): Future[List[Item]] = {
+    itemsPersistence.sortedItems map { items => items filter { i => i.category.equals(category) } }
+//    (itemsActor ? GetItemsByCategory(category)).mapTo[Future[List[Item]]].flatMap( fItems => fItems )
+  }
 
-  def create(itemNumber: String, category: String, donor: String, description: String, minbid: Double, estvalue: Double): Future[Item] =
-    (itemsActor ? Item(None, itemNumber, category, donor, description, minbid, estvalue)).mapTo[Item]
+  def get(id: Long): Future[Option[Item]] = {
+    itemsPersistence.itemById(id)
+//    (itemsActor ? GetItem(id)).mapTo[Future[Option[Item]]].flatMap( fOpt => fOpt )
+  }
 
-  def delete(id: Long): Future[Item] = (itemsActor ? DeleteItem(id)).mapTo[Item]
+  def create(itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal): Future[Item] =
+    itemsPersistence.create(Item(None, itemNumber, category, donor, description, minbid, estvalue))
+//    (itemsActor ? Item(None, itemNumber, category, donor, description, minbid, estvalue)).mapTo[Future[Item]].flatMap( fItem => fItem )
 
-  def edit(id: Long, itemNumber: String, category: String, donor: String, description: String, minbid: Double, estvalue: Double): Future[Item] =
-    (itemsActor ? EditItem(Item(Some(id), itemNumber, category, donor, description, minbid, estvalue))).mapTo[Item]
+  def delete(id: Long): Future[Item] =
+    get(id) flatMap {
+      case Some(item) => itemsPersistence.delete(item)
+    }
+//    (itemsActor ? DeleteItem(id)).mapTo[Future[Item]].flatMap( fItem => fItem )
 
-  def getWinningBid(id: Long): Future[Option[WinningBid]] = (itemsActor ? GetWinningBid(id)).mapTo[Option[WinningBid]]
-  def winningBids(item: Item): Future[List[WinningBid]] = (itemsActor ? WinningBidsByItem(item)).mapTo[List[WinningBid]]
-  def winningBids(bidder: Bidder): Future[List[WinningBid]] = (itemsActor ? WinningBidsByBidder(bidder)).mapTo[List[WinningBid]]
+  def edit(id: Long, itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal): Future[Item] =
+    itemsPersistence.edit(Item(Some(id), itemNumber, category, donor, description, minbid, estvalue))
+//  (itemsActor ? EditItem(Item(Some(id), itemNumber, category, donor, description, minbid, estvalue))).mapTo[Future[Item]].flatMap( fItem => fItem )
 
-  def addWinningBid(bidder: Bidder, item: Item, amount: Double): Future[WinningBid] =
-    (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[WinningBid]
+  def getWinningBid(id: Long): Future[Option[WinningBid]] = {
+    itemsPersistence.winningBidById(id)
+//    (itemsActor ? GetWinningBid(id)).mapTo[Future[Option[WinningBid]]].flatMap( fOpt => fOpt )
+  }
+  def winningBids(item: Item): Future[List[WinningBid]] = {
+    itemsPersistence.winningBidsByItem(item)
+//    (itemsActor ? WinningBidsByItem(item)).mapTo[Future[List[WinningBid]]].flatMap( fList => fList )
+  }
+  def winningBids(bidder: Bidder): Future[List[WinningBid]] = {
+    itemsPersistence.winningBidsByBidder(bidder)
+//    (itemsActor ? WinningBidsByBidder(bidder)).mapTo[Future[List[WinningBid]]].flatMap( fList => fList )
+  }
 
-  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: Double): Future[WinningBid] =
-    (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[WinningBid]
+  def addWinningBid(bidder: Bidder, item: Item, amount: BigDecimal): Future[WinningBid] =
+    itemsPersistence.create(WinningBid(None, bidder, item, amount))
+//    (itemsActor ? WinningBid(None, bidder, item, amount)).mapTo[Future[WinningBid]].flatMap( fWB => fWB )
+
+  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Future[WinningBid] =
+    itemsPersistence.edit(WinningBid(Some(winningBidId), bidder, item, amount))
+//    (itemsActor ? EditWinningBid(winningBidId, bidder, item, amount)).mapTo[Future[WinningBid]].flatMap( fWB => fWB )
 
   def deleteWinningBid(winningBidId: Long): Future[WinningBid] =
-    (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[WinningBid]
+    getWinningBid(winningBidId) flatMap {
+      case Some(winningBid) => itemsPersistence.delete(winningBid)
+    }
+//    (itemsActor ? DeleteWinningBid(winningBidId)).mapTo[Future[WinningBid]].flatMap( fWB => fWB )
 
-  private def allWinningBidsByBidder(bidder: Bidder) = winningBids(bidder)
-
-  def totalWinningBidsByBidder(bidder: Bidder): Future[Double] =
-    allWinningBidsByBidder(bidder) map { bidsList =>
-      (0.0 /: bidsList) { (sum, bid) => sum + bid.amount}
+  def totalWinningBidsByBidder(bidder: Bidder): Future[BigDecimal] =
+    winningBids(bidder) map { bidsList =>
+      (BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.amount}
     }
 
-  def totalEstValueByBidder(bidder: Bidder): Future[Double] =
-    allWinningBidsByBidder(bidder) map { bidsList =>
-      (0.0 /: bidsList) { (sum, bid) => sum + bid.item.estvalue}
+  def totalEstValueByBidder(bidder: Bidder): Future[BigDecimal] =
+    winningBids(bidder) map { bidsList =>
+      (BigDecimal(0.0) /: bidsList) { (sum, bid) => sum + bid.item.estvalue}
     }
 
   def currentItems(): Future[List[ItemData]] = {
@@ -86,11 +116,12 @@ class ItemHandler @Inject()(actorSystem: ActorSystem, implicit val ec: Execution
   }
 
   def loadFromDataSource(): Future[Boolean] = {
-    (itemsActor ? LoadFromDataSource).mapTo[Boolean]
+    Future.successful(true)
+//    (itemsActor ? LoadFromDataSource).mapTo[Future[Boolean]].flatMap(b => b)
   }
 }
 
 case class WinningBidException(message: String, cause: Exception = null) extends Exception
 
-case class WinningBid(id: Option[Long], bidder: Bidder, item: Item, amount: Double)
-object WinningBid extends ((Option[Long], Bidder, Item, Double) => WinningBid)
+case class WinningBid(id: Option[Long], bidder: Bidder, item: Item, amount: BigDecimal)
+object WinningBid extends ((Option[Long], Bidder, Item, BigDecimal) => WinningBid)

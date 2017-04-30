@@ -4,9 +4,10 @@
     <head>
         <title ng-bind="pageTitle"></title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="shortcut icon" type="image/png" href="@routes.Assets.at("images/favicon.png")">
+        <link rel="shortcut icon" type="image/png" href="@routes.Assets.versioned("images/favicon.png")">
         <link rel="stylesheet" media="screen" href="@routes.WebJarAssets.at(webJarAssets.locate("bootstrap.min.css"))" />
-        <link rel="stylesheet" media="screen" href="@routes.Assets.at("stylesheets/app.css")">
+        <link rel="stylesheet" media="screen" href="@routes.Assets.versioned("stylesheets/app.css")">
+        <script data-main="@routes.Assets.versioned("javascripts/main.js")" type="text/javascript" src="@routes.Assets.versioned("lib/requirejs/require.js")"></script>
     </head>
     <body>
         <header id="main-header">
@@ -39,8 +40,9 @@
         <footer id="main-footer" ng-controller="FooterCtrl">
             <div ng-class="statusService.message.status" role="alert">{{ statusService.message.text }}</div>
         </footer>
+        @*--
         <script src="@routes.WebJarAssets.at(webJarAssets.locate("jquery.min.js"))"></script>
-        <script data-main="@routes.Assets.at("javascripts/app.js")" type="text/javascript" src="@routes.Assets.at("lib/requirejs/require.js")"></script>
         <script src="@routes.WebJarAssets.at(webJarAssets.locate("bootstrap.min.js"))"></script>
+        *@
     </body>
 </html>

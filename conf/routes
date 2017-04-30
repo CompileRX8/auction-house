@@ -29,8 +29,10 @@ POST        /login                                controllers.AppController.logi
 POST        /logout                               controllers.AppController.logout
 
 # Map static resources from the /public folder to the /assets URL path
-GET         /webjars/*file                        @controllers.WebJarAssets.at(file)
+#GET         /jsroutes.js                          controllers.AppController.jsRoutes
+
+GET         /webjars/*file                        controllers.WebJarAssets.at(file)
 
 GET         /javascripts/routes                   controllers.AppController.javascriptRoutes
 
-GET         /*file                                @controllers.Assets.at(path="/public", file)
+GET         /*file                                controllers.Assets.versioned(path="/public", file: Asset)

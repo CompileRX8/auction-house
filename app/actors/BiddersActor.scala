@@ -2,12 +2,11 @@ package actors
 
 import javax.inject.Inject
 
-import akka.actor.{Actor, ActorRef, Props}
+import akka.actor.{Actor, ActorRef}
 import models.{Bidder, BidderException, Payment}
-import persistence.slick.{BiddersPersistenceSlick, ItemsPersistenceSlick}
+import persistence.{BiddersPersistence, ItemsPersistence}
 
 import scala.concurrent.Future
-
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.Failure
 
@@ -20,13 +19,9 @@ object BiddersActor {
   case class EditBidder(bidder: Bidder)
 
   case class Payments(bidder: Bidder)
-
-  def props = Props(classOf[BiddersActor])
 }
 
-
-
-class BiddersActor @Inject()(implicit val biddersPersistence: BiddersPersistenceSlick, implicit val itemsPersistence: ItemsPersistenceSlick) extends Actor {
+class BiddersActor @Inject()(biddersPersistence: BiddersPersistence, itemsPersistence: ItemsPersistence) extends Actor {
   import BiddersActor._
 
   private def findBidder(bidder: Bidder): Future[Option[Bidder]] = bidder.id match {

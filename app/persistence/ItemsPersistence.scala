@@ -20,7 +20,8 @@ trait ItemsPersistence {
 
   def edit(item: Item): Future[Item]
 
-  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: Double): Future[WinningBid]
+  def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Future[WinningBid]
+  def edit(winningBid: WinningBid): Future[WinningBid]
 
   def winningBidById(id: Long): Future[Option[WinningBid]]
 

@@ -5,7 +5,7 @@ import javax.inject.Inject
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.language.postfixOps
 import scala.concurrent.duration._
-import akka.actor.{Actor, ActorLogging, Props, Scheduler}
+import akka.actor.{Actor, ActorLogging, ActorSystem, Cancellable, Scheduler}
 import akka.util.Timeout
 import models._
 
@@ -19,11 +19,14 @@ object AuctionDemoActor {
   case object NewWinningBid
   case object NewPayment
 
-  def props = Props(classOf[AuctionDemoActor])
+  case object StartMeUp
+  case object ShutMeDown
 }
 
-class AuctionDemoActor @Inject() (implicit val scheduler: Scheduler, implicit val itemHandler: ItemHandler, implicit val bidderHandler: BidderHandler) extends Actor with ActorLogging {
+class AuctionDemoActor @Inject()(actorSystem: ActorSystem, itemHandler: ItemHandler, bidderHandler: BidderHandler) extends Actor with ActorLogging {
   import AuctionDemoActor._
+
+  private val scheduler = actorSystem.scheduler
 
   implicit val timeout = Timeout(3 seconds)
 
@@ -32,12 +35,29 @@ class AuctionDemoActor @Inject() (implicit val scheduler: Scheduler, implicit va
   var bidderData: List[BidderData] = List.empty
   var itemData: List[ItemData] = List.empty
 
-  scheduler.schedule(10 seconds, 10 seconds, self, AuctionAction)
+  private var runningSchedule: Cancellable = _
 
-  Range(0, 10) foreach { _ => self ! NewBidder }
-  Range(0, 30) foreach { _ => self ! NewItem }
+  def startMeUp(): Unit = {
+    Range(0, 10) foreach { _ => self ! NewBidder }
+    Range(0, 30) foreach { _ => self ! NewItem }
+
+    runningSchedule = scheduler.schedule(10 seconds, 10 seconds, self, AuctionAction)
+  }
+
+  def shutMeDown(): Unit = {
+    if(runningSchedule != null && !runningSchedule.isCancelled) {
+      runningSchedule.cancel()
+      runningSchedule = null
+    }
+  }
 
   override def receive = {
+    case StartMeUp =>
+      startMeUp()
+
+    case ShutMeDown =>
+      shutMeDown()
+
     case AuctionAction =>
       random.nextInt(10) match {
         case 0 =>
