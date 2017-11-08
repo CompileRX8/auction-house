@@ -2,10 +2,9 @@ html,
 body {
     height: 100%;
     overflow: hidden;
-    background-color: ivory;
 }
 .basics-nav {
-    background-color: darkcyan;
+    background-color: darkgreen;
 }
 .basics-nav .navbar-brand {
     color: ivory;
@@ -14,7 +13,7 @@ body {
     color: ivory;
 }
 .basics-nav .navbar-nav .dropdown-menu a {
-    color: ivory;
+    color: #000;
 }
 .app-form input.ng-dirty.ng-invalid {
     background: lightpink;
