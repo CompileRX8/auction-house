@@ -2,15 +2,16 @@ html,
 body {
     height: 100%;
     overflow: hidden;
+    background-color: ivory;
 }
 .basics-nav {
     background-color: darkgreen;
 }
 .basics-nav .navbar-brand {
-    color: #e3ffc7;
+    color: darkcyan;
 }
 .basics-nav .navbar-nav li a {
-    color: #e3ffc7;
+    color: darkcyan;
 }
 .basics-nav .navbar-nav .dropdown-menu a {
     color: #000;
