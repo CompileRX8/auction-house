@@ -19,11 +19,13 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
 
   val db = dbConfig.db
 
-  case class ItemRow(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: BigDecimal, estvalue: BigDecimal) {
+  type PGMoney = BigDecimal
+
+  case class ItemRow(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: PGMoney, estvalue: PGMoney) {
     def toItem: Future[Item] = Future.successful(Item(id, itemNumber, category, donor, description, minbid, estvalue))
   }
 
-  object ItemRow extends ((Option[Long], String, String, String, String, BigDecimal, BigDecimal) => ItemRow) {
+  object ItemRow extends ((Option[Long], String, String, String, String, PGMoney, PGMoney) => ItemRow) {
     def fromItem(item: Item): Future[ItemRow] = Future.successful(ItemRow(item.id, item.itemNumber, item.category, item.donor, item.description, item.minbid, item.estvalue))
 
     def toItem(row: ItemRow): Future[Item] = row.toItem
@@ -35,15 +37,15 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
     def category = column[String]("category")
     def donor = column[String]("donor")
     def description = column[String]("description")
-    def minbid = column[BigDecimal]("minbid")
-    def estvalue = column[BigDecimal]("estvalue")
+    def minbid = column[PGMoney]("minbid")
+    def estvalue = column[PGMoney]("estvalue")
     def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( ItemRow.tupled, ItemRow.unapply )
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
   }
   val itemsQuery = TableQuery[Items]
 
-  case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: BigDecimal) {
+  case class WinningBidRow(id: Option[Long], bidderId: Long, itemId: Long, amount: PGMoney) {
     def toWinningBid: Future[WinningBid] = biddersPersistenceSlick.bidderById(bidderId).zip(itemById(itemId)) map {
       case (Some(bidder), Some(item)) => WinningBid(id, bidder, item, amount)
       case (Some(_), None) => throw ItemException(s"Unable to create winning bid with invalid item id $itemId")
@@ -63,7 +65,7 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
       case None => throw BidderException(s"Unable to create winning bid with invalid bidder id $bidderId")
     }
   }
-  object WinningBidRow extends ((Option[Long], Long, Long, BigDecimal) => WinningBidRow) {
+  object WinningBidRow extends ((Option[Long], Long, Long, PGMoney) => WinningBidRow) {
     def fromWinningBid(winningBid: WinningBid): Future[WinningBidRow] = Future.successful(WinningBidRow(winningBid.id, winningBid.bidder.id.get, winningBid.item.id.get, winningBid.amount))
 
     def toWinningBid(row: WinningBidRow) = row.toWinningBid
@@ -87,7 +89,7 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
     def id = column[Long]("id", O.PrimaryKey, O.AutoInc)
     def bidderId = column[Long]("bidder_id")
     def itemId = column[Long]("item_id")
-    def amount = column[BigDecimal]("amount")
+    def amount = column[PGMoney]("amount")
     def * = (id.?, bidderId, itemId, amount) <> ( WinningBidRow.tupled, WinningBidRow.unapply )
 
     def bidderFK = foreignKey("winningbid_bidder_id_fk", bidderId, biddersPersistenceSlick.biddersQuery)(_.id, ForeignKeyAction.Restrict, ForeignKeyAction.Cascade)
@@ -182,7 +184,7 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
       }
     }
   }
-  override def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: BigDecimal): Future[WinningBid] = ???
+  override def editWinningBid(winningBidId: Long, bidder: Bidder, item: Item, amount: PGMoney): Future[WinningBid] = ???
 
   override def winningBidById(id: Long): Future[Option[WinningBid]] = {
     val q = for {
