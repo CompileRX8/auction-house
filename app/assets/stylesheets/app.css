@@ -5,16 +5,16 @@ body {
     background-color: ivory;
 }
 .basics-nav {
-    background-color: darkgreen;
+    background-color: darkcyan;
 }
 .basics-nav .navbar-brand {
-    color: darkcyan;
+    color: ivory;
 }
 .basics-nav .navbar-nav li a {
-    color: darkcyan;
+    color: ivory;
 }
 .basics-nav .navbar-nav .dropdown-menu a {
-    color: #000;
+    color: ivory;
 }
 .app-form input.ng-dirty.ng-invalid {
     background: lightpink;
