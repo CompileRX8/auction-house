@@ -4,6 +4,8 @@ import scala.language.postfixOps
 
 trait SlickPersistence {
 
+  type PGMoney = BigDecimal
+
   def mapOption[R, D](f: (R) => D)(opt: Option[R]) = {
     opt map {
       f(_)

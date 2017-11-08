@@ -19,8 +19,6 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
 
   val db = dbConfig.db
 
-  type PGMoney = BigDecimal
-
   case class ItemRow(id: Option[Long], itemNumber: String, category: String, donor: String, description: String, minbid: PGMoney, estvalue: PGMoney) {
     def toItem: Future[Item] = Future.successful(Item(id, itemNumber, category, donor, description, minbid, estvalue))
   }
@@ -42,6 +40,12 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
     def * = (id.?, itemNumber, category, donor, description, minbid, estvalue) <> ( ItemRow.tupled, ItemRow.unapply )
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
+
+    implicit val moneyColumnType = MappedColumnType.base[String, PGMoney](
+      { str => BigDecimal(str.filter( List('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.').contains(_) ) ) },
+      { bd => bd.toString }
+    )
+
   }
   val itemsQuery = TableQuery[Items]
 
