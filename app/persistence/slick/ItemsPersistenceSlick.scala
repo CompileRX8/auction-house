@@ -41,11 +41,6 @@ class ItemsPersistenceSlick @Inject()(dbConfigProvider: DatabaseConfigProvider, 
 
     def itemNumberIdx = index("item_item_number_idx", itemNumber, unique = true)
 
-    implicit val moneyColumnType = MappedColumnType.base[String, PGMoney](
-      { str => BigDecimal(str.filter( List('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '.').contains(_) ) ) },
-      { bd => bd.toString }
-    )
-
   }
   val itemsQuery = TableQuery[Items]
 
