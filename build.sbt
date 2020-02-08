@@ -17,7 +17,7 @@ libraryDependencies ++= Seq(
   ,"org.postgresql" % "postgresql" % "42.0.0"
 )
 
-herokuAppName in Compile := "cccauction2017"
+herokuAppName in Compile := "nhmauction2020"
 
 CoffeeScriptKeys.bare := true
 
