@@ -4,9 +4,9 @@ body {
     overflow: hidden;
 }
 .basics-nav {
-    background-color: blue;
+    background-color: cadetblue;
 }
-.basics-nav .navbar-brand {
+.basics-nav .navbar-brand .navbar-text {
     color: ivory;
 }
 .basics-nav .navbar-nav li a {
